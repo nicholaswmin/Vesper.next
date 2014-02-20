@@ -340,6 +340,7 @@ function hideSelectionBounds() {
 }
 
 function updateSelectionState() {
+	paper.project.options.handleSize = 8;
 	clearSelectionBounds();
 	selectionBounds = getSelectionBounds();
 	if (selectionBounds != null) {
@@ -617,7 +618,7 @@ toolSelect.testHot = function(type, event, mode) {
 	return this.hitTest(event);
 };
 toolSelect.hitTest = function(event) {
-	var hitSize = 4.0; // / paper.view.zoom;
+	var hitSize = 8.0; // / paper.view.zoom;
 	this.hitItem = null;
 
 	// Hit test items.
@@ -759,7 +760,7 @@ toolDirectSelect.testHot = function(type, event, mode) {
 };
 
 toolDirectSelect.hitTest = function(event) {
-	var hitSize = 4.0; // / paper.view.zoom;
+	var hitSize = 8.0; // / paper.view.zoom;
 	var hit = null;
 	this.hitItem = null;
 
@@ -993,7 +994,7 @@ toolScale.testHot = function(type, event, mode) {
 };
 
 toolScale.hitTest = function(event) {
-	var hitSize = 6.0; // / paper.view.zoom;
+	var hitSize = 12.0; // / paper.view.zoom;
 	this.hitItem = null;
 
 	if (!selectionBoundsShape || !selectionBounds)
@@ -1119,7 +1120,7 @@ toolRotate.testHot = function(type, event, mode) {
 };
 
 toolRotate.hitTest = function(event) {
-	var hitSize = 12.0; // / paper.view.zoom;
+	var hitSize = 24.0; // / paper.view.zoom;
 	this.hitItem = null;
 
 	if (!selectionBoundsShape || !selectionBounds)
@@ -1370,7 +1371,7 @@ toolPen.testHot = function(type, event, mode) {
 	return this.hitTest(event, type);
 };
 toolPen.hitTest = function(event, type) {
-	var hitSize = 4.0; // / paper.view.zoom;
+	var hitSize = 8.0; // / paper.view.zoom;
 	var result = null;
 //	var isKeyEvent = type == 'mode' || type == 'command' || type == 'keydown' || type == 'keyup';
 
