@@ -1,3 +1,7 @@
+var materialWidth=800;
+var materialHeight=500;
+
+
 
 function Undo(maxUndos) {
 	this.states = [];
@@ -380,6 +384,26 @@ function cutSelection() {
 	}
 	undo.snapshot("Cut");
 }
+
+function bringToBackSelection() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].sendToBack();
+	}
+	undo.snapshot("Cut");
+}
+
+function bringToFrontSelection() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].bringToFront();
+	}
+	undo.snapshot("Cut");
+}
+
+
 
 function copySelection() {
 	clipboard = captureSelectionState();
@@ -1438,6 +1462,7 @@ toolPen.on({
 				path = new paper.Path();
 				path.strokeColor = 'black';
 				this.pathId = path.id;
+				path.fillColor = 'red';
 			}
 			this.currentSegment = path.add(event.point);
 
@@ -1751,10 +1776,9 @@ $(document).ready(function() {
 
 	undo = new Undo(20);
 
-	var path1 = new paper.Path.Circle(new paper.Point(180, 50), 30);
-	path1.strokeColor = 'black';
-	var path2 = new paper.Path.Circle(new paper.Point(180, 150), 20);
-	path2.fillColor = 'grey';
+
+	var path2 = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
+	path2.strokeColor ='black';
 
 	undo.snapshot("Init");
 
@@ -1787,6 +1811,15 @@ $(document).ready(function() {
 	$("#cut").click(function() {
 		cutSelection();
 	});
+
+    $("#tool-moveFront").click(function() {
+		bringToBackSelection();
+	});
+
+	$("#tool-moveFrontMost").click(function() {
+		bringToFrontSelection();
+	});
+
 	$("#copy").click(function() {
 		copySelection();
 	});
