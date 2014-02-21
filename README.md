@@ -1,4 +1,73 @@
 Vesper.next
 ===========
 
-Vesper built on top of paper.js - Fork of stylii: https://github.com/memononen/stylii
+This is the next version of the CAD-in-a-browser package called VESPER(Vectors In Specified Environments) that started in late 2012.
+
+I will try to rewrite a ''critical mass'' of VESPER on top of paper.js instead of pure SVG. This re-write is largely undertaken due to suspected large speed impovements over SVG and other factors such as cross-browser compatibility and some more.
+
+Vesper.next is built on top of paper.js using as as the ''cake base'', a fork of stylii: https://github.com/memononen/stylii
+
+
+
+
+
+LICENSE
+
+
+Copyright (c) 2014 Nicholas Kyriakides nicholas.kyriakides@my.westminster.ac.uk
+
+Unauthorized copying of this file, via any medium is strictly prohibited
+Proprietary and confidential software
+
+I, the software owner explicitly restrict and forbid any unauthorized party from USING,COPYING,MODIFYING,
+MERGING,PUBLISHING and DISTRIBUTING any copies of the software or any part of it 
+without the owner's written permission.
+
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+
+LICENSE - Stylii initial commit
+Copyright (c) 2013-2014 Mikko Mononen memon@inside.org
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+claim that you wrote the original software. If you use this software
+in a product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+
+
+LICENSE - Boolean Operation pre-steps, broken-pen-nib effect pre-triangulation step, WebGL 3D Rendering
+
+Copyright (c) 2013 Timo
+
+Permission is hereby granted to Nicholas Kyriakides to use, copy, modify,
+merge, publish, distribute and sell copies of the Software. The Software
+means the code parts that are made by Timo (usually marked by "Timo's addition").
+The right to sublicense the Software using open source license is reserved and
+is not allowed without written permission of the author. This restriction
+applies also after possible license selling or sublicensing to other parties.
+This license doesn't restrict in any way the author's rights to the Software.
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
