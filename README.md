@@ -16,7 +16,7 @@ LICENSE
 
 Copyright (c) 2014 Nicholas Kyriakides nicholas.kyriakides@my.westminster.ac.uk
 
-Unauthorized copying of this file, via any medium is strictly prohibited
+Unauthorized copying of any of the software files, via any medium is strictly prohibited
 Proprietary and confidential software
 
 I, the software owner explicitly restrict and forbid any unauthorized party from USING,COPYING,MODIFYING,
@@ -27,6 +27,7 @@ without the owner's written permission.
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
+--------------------------------------------------------------------------------------------------------------
 
 LICENSE - Stylii initial commit
 Copyright (c) 2013-2014 Mikko Mononen memon@inside.org
@@ -47,7 +48,7 @@ appreciated but is not required.
 misrepresented as being the original software.
 3. This notice may not be removed or altered from any source distribution.
 
-
+--------------------------------------------------------------------------------------------------------------
 
 LICENSE - Boolean Operation pre-steps, broken-pen-nib effect pre-triangulation step, WebGL 3D Rendering
 
@@ -71,3 +72,6 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+--------------------------------------------------------------------------------------------------------------
