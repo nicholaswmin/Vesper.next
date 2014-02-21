@@ -9,16 +9,12 @@
 	<script type="text/javascript" src="js/editor.js"></script>
 </head>
 <body>
-	<div id="menu">
-		<a id="undo">Undo</a>
-		<a id="redo">Redo</a>
-		-
-		<a id="cut">Cut</a>
-		<a id="copy">Copy</a>
-		<a id="paste">Paste</a>
-		-
-		<a id="delete">Delete</a>
-	</div>
+	<ul id="tools_undo">
+		<li id="undo" class="button"><img src="img/undo.png" /></li>
+		<li id="redo" class="button"><img src="img/redo.png" /></li>
+	</ul>
+
+
 	<ul id="tools">
 		<li id="tool-select" class="button"><img src="img/icon-arrow-black.png" /></li>
 		<li id="tool-direct-select" class="button"><img src="img/icon-arrow-white.png" /></li>
@@ -26,7 +22,18 @@
 		<li id="tool-zoompan" class="button"><img src="img/icon-hand.png" /></li>
 	</ul>
 
+    <ul id="tools_elementType">
+		<li id="tool-material" class="button"><img src="img/elementMaterial.png" /></li>
+		<li id="tool-hole" class="button"><img src="img/elementHole.png" /></li>
+		<li id="tool-rasterEngrave" class="button"><img src="img/elementRasterEngrave.png" /></li>
+		<li id="tool-vectorEngrave" class="button"><img src="img/elementVectorEngrave.png" /></li>
+	</ul>
+
 	<ul id="tools_right">
+		<li id="cut" class="button"><img src="img/cut.png" /></li>
+		<li id="copy" class="button"><img src="img/copy.png" /></li>
+		<li id="paste" class="button"><img src="img/paste.png" /></li>
+		<li id="delete" class="button"><img src="img/delete.png" /></li>
 		<li id="tool-moveFront" class="button"><img src="img/bringBackMost.png" /></li>
 		<li id="tool-moveFrontMost" class="button"><img src="img/bringFrontMost.png" /></li>
 	</ul>

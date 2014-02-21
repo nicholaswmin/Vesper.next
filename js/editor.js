@@ -1,5 +1,11 @@
 var materialWidth=800;
 var materialHeight=500;
+var cutColor="#3498db";
+var holeColor="#ecf0f1";
+var vectorEngraveColor="#2980b9";
+var rasterEngraveColor="#2c3e50";
+
+var currentToolColor=cutColor;
 
 
 
@@ -404,6 +410,49 @@ function bringToFrontSelection() {
 	undo.snapshot("Cut");
 }
 
+function setElementTypeMaterial() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].fillColor= cutColor;
+		selected[i].opacity= 0.5;
+		currentToolColor=cutColor;
+	}
+	undo.snapshot("Cut");
+}
+
+function setElementTypeHole() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].fillColor= holeColor;
+		selected[i].opacity= 0.5;
+		currentToolColor=holeColor;
+	}
+	undo.snapshot("Cut");
+}
+
+function setElementTypeVectorEngrave() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].fillColor= vectorEngraveColor;
+		selected[i].opacity= 0.5;
+		currentToolColor=vectorEngraveColor;
+	}
+	undo.snapshot("Cut");
+}
+
+function setElementTypeRasterEngrave() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].fillColor= rasterEngraveColor;
+		selected[i].opacity= 0.5;
+		currentToolColor=rasterEngraveColor;
+	}
+	undo.snapshot("Cut");
+}
 
 
 function copySelection() {
@@ -1461,9 +1510,11 @@ toolPen.on({
 			if (path == null) {
 				deselectAll();
 				path = new paper.Path();
+				path.fillColor = currentToolColor;
+				path.opacity = 0.5;
 				path.strokeColor = 'black';
 				this.pathId = path.id;
-				path.fillColor = 'red';
+			
 			}
 			this.currentSegment = path.add(event.point);
 
@@ -1812,6 +1863,23 @@ $(document).ready(function() {
 	$("#cut").click(function() {
 		cutSelection();
 	});
+
+	$("#tool-material").click(function() {
+		setElementTypeMaterial();
+	});
+
+	$("#tool-hole").click(function() {
+		setElementTypeHole();
+	});
+
+	$("#tool-vectorEngrave").click(function() {
+		setElementTypeVectorEngrave();
+	});
+
+	$("#tool-rasterEngrave").click(function() {
+		setElementTypeRasterEngrave();
+	});
+
 
     $("#tool-moveFront").click(function() {
 		bringToBackSelection();
