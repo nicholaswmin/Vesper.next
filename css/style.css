@@ -1,3 +1,5 @@
+/*UPSTREAM MODIFICATION by "nicholaswmin".Changed the body's background to #ecf0f1*/
+
 body {
 	margin: 0;
 	overflow: hidden;
@@ -6,46 +8,14 @@ body {
 	background: #ecf0f1;
 }
 
+/*UPSTREAM MODIFICATION by "nicholaswmin". I changed a bit the color and position of the "#tools" since i added more toolbars and i needed to arrange them
+properly. "#tools" here refer to the left hand tools such as select tool, pen tool etc*/
+
+/*Changed the right tools background to #2F2F2C to match with the rest of the toolbars in ext-styleNext.css.*/
 #tools {
 	position: fixed;
 	left: 40px;
 	top: 105px;
-	padding: 0;
-	background: #fff;
-	background: #2F2F2C;
-	margin: 0;
-	box-shadow: 0px 3px 6px rgba(0,0,0,0.4);
-}
-
-#tools_undo {
-	position: fixed;
-	left: 40px;
-	width:auto;
-	top: 5px;
-	padding: 0;
-	background: #fff;
-	background: #2F2F2C;
-	margin: 0;
-	box-shadow: 0px 3px 6px rgba(0,0,0,0.4);
-}
-
-#tools_right {
-	position: fixed;
-	left: 1100px;
-	width: 100px;
-	top: 50px;
-	padding: 0;
-	background: #fff;
-	background: #2F2F2C;
-	margin: 0;
-	box-shadow: 0px 3px 6px rgba(0,0,0,0.4);
-}
-
-
-#tools_elementType {
-	position: fixed;
-	left: 40px;
-	top: 55px;
 	padding: 0;
 	background: #fff;
 	background: #2F2F2C;

@@ -7,8 +7,22 @@
 	<script type="text/javascript" src="js/jquery.js"></script>
 	<script type="text/javascript" src="js/paper.js"></script>
 	<script type="text/javascript" src="js/editor.js"></script>
+
+	<!--Start adding non-upstream files -->
+
+	<!--This file is used for the startup settings of the app plus some more.  -->
+	<script type="text/javascript" src="v.next/js/ext-globalVariables.js"></script>
+	<!--The non-upstream editor.js extension that adds the additional functionality.  -->
+	<script type="text/javascript" src="v.next/js/ext-editorNext.js"></script>
+
+
+	<!--The non-upstream style.css extension that adds the additional functionality.  -->
+	<link rel="stylesheet" href="v.next/css/ext-styleNext.css">
+
+
 </head>
 <body>
+	<!--Split undo toolbar from the rest of the buttons-->
 	<ul id="tools_undo">
 		<li id="undo" class="button"><img src="img/undo.png" /></li>
 		<li id="redo" class="button"><img src="img/redo.png" /></li>
@@ -21,14 +35,17 @@
 		<li id="tool-pen" class="button"><img src="img/icon-pen.png" /></li>
 		<li id="tool-zoompan" class="button"><img src="img/icon-hand.png" /></li>
 	</ul>
-
+    
+    <!--ElementType buttons that allow the user to draw and illuminate elements on the canvas as either ''Materials, Holes, Vector Engravings,Raster Engravings''-->
     <ul id="tools_elementType">
 		<li id="tool-material" class="button"><img src="img/elementMaterial.png" /></li>
 		<li id="tool-hole" class="button"><img src="img/elementHole.png" /></li>
 		<li id="tool-rasterEngrave" class="button"><img src="img/elementRasterEngrave.png" /></li>
 		<li id="tool-vectorEngrave" class="button"><img src="img/elementVectorEngrave.png" /></li>
 	</ul>
+    
 
+    <!--Split a right toolbar that should contain tools that appear when elements are selected from the rest of the buttons-->
 	<ul id="tools_right">
 		<li id="cut" class="button"><img src="img/cut.png" /></li>
 		<li id="copy" class="button"><img src="img/copy.png" /></li>

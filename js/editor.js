@@ -1,11 +1,8 @@
-var materialWidth=800;
-var materialHeight=500;
-var cutColor="#3498db";
-var holeColor="#ecf0f1";
-var vectorEngraveColor="#2980b9";
-var rasterEngraveColor="#2c3e50";
+//UPSTREAM MODIFICATIONS by ''nicholaswmin''. There are more hidden in the code. Use keyword ''UPSTREAM MODIFICATION'' to dig em out!
 
-var currentToolColor=cutColor;
+//Multiply every 'hitSize = 6.0' or something by 2. ->Makes grabbing handles such as vertices/resize/rotate handles easier to catch.
+//Add 'paper.project.options.handleSize = 8' to the beginning of the function updateSelectionState(). -> Makes grabbing handles such as vertices/resize/rotate handles easier to catch.
+
 
 
 
@@ -388,68 +385,6 @@ function cutSelection() {
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].remove();
-	}
-	undo.snapshot("Cut");
-}
-
-function bringToBackSelection() {
-	clipboard = captureSelectionState();
-	var selected = paper.project.selectedItems;
-	for (var i = 0; i < selected.length; i++) {
-		selected[i].sendToBack();
-	}
-	undo.snapshot("Cut");
-}
-
-function bringToFrontSelection() {
-	clipboard = captureSelectionState();
-	var selected = paper.project.selectedItems;
-	for (var i = 0; i < selected.length; i++) {
-		selected[i].bringToFront();
-	}
-	undo.snapshot("Cut");
-}
-
-function setElementTypeMaterial() {
-	clipboard = captureSelectionState();
-	var selected = paper.project.selectedItems;
-	for (var i = 0; i < selected.length; i++) {
-		selected[i].fillColor= cutColor;
-		selected[i].opacity= 0.5;
-		currentToolColor=cutColor;
-	}
-	undo.snapshot("Cut");
-}
-
-function setElementTypeHole() {
-	clipboard = captureSelectionState();
-	var selected = paper.project.selectedItems;
-	for (var i = 0; i < selected.length; i++) {
-		selected[i].fillColor= holeColor;
-		selected[i].opacity= 0.5;
-		currentToolColor=holeColor;
-	}
-	undo.snapshot("Cut");
-}
-
-function setElementTypeVectorEngrave() {
-	clipboard = captureSelectionState();
-	var selected = paper.project.selectedItems;
-	for (var i = 0; i < selected.length; i++) {
-		selected[i].fillColor= vectorEngraveColor;
-		selected[i].opacity= 0.5;
-		currentToolColor=vectorEngraveColor;
-	}
-	undo.snapshot("Cut");
-}
-
-function setElementTypeRasterEngrave() {
-	clipboard = captureSelectionState();
-	var selected = paper.project.selectedItems;
-	for (var i = 0; i < selected.length; i++) {
-		selected[i].fillColor= rasterEngraveColor;
-		selected[i].opacity= 0.5;
-		currentToolColor=rasterEngraveColor;
 	}
 	undo.snapshot("Cut");
 }
@@ -1510,6 +1445,10 @@ toolPen.on({
 			if (path == null) {
 				deselectAll();
 				path = new paper.Path();
+
+				//UPSTREAM Modification by ''nicholaswmin''. I added a path.fill color variable that paints the path to the color
+				//specified by the ext-globalVariables.js file. It allows the user to draw elementType's based on their currently selected tool.
+				//Also added some transparency to help the user see elements hiding behind other elements
 				path.fillColor = currentToolColor;
 				path.opacity = 0.5;
 				path.strokeColor = 'black';
@@ -1828,9 +1767,14 @@ $(document).ready(function() {
 
 	undo = new Undo(20);
 
-
-	var path2 = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
-	path2.strokeColor ='black';
+    
+    //UPSTREAM MODIFICATION by "nicholaswmin"
+    //I removed the following 2 paths since they are used in the initial ''Stylii'' editor as example shapes placed on the canvas on startup.
+    //Utterly useless.
+    //var path1 = new paper.Path.Circle(new paper.Point(180, 50), 30);
+    //path1.strokeColor = 'black';
+    //var path2 = new paper.Path.Circle(new paper.Point(180, 150), 20);
+    //path2.fillColor = 'grey';
 
 	undo.snapshot("Init");
 
@@ -1864,31 +1808,7 @@ $(document).ready(function() {
 		cutSelection();
 	});
 
-	$("#tool-material").click(function() {
-		setElementTypeMaterial();
-	});
-
-	$("#tool-hole").click(function() {
-		setElementTypeHole();
-	});
-
-	$("#tool-vectorEngrave").click(function() {
-		setElementTypeVectorEngrave();
-	});
-
-	$("#tool-rasterEngrave").click(function() {
-		setElementTypeRasterEngrave();
-	});
-
-
-    $("#tool-moveFront").click(function() {
-		bringToBackSelection();
-	});
-
-	$("#tool-moveFrontMost").click(function() {
-		bringToFrontSelection();
-	});
-
+	
 	$("#copy").click(function() {
 		copySelection();
 	});
