@@ -564,6 +564,12 @@ function getSelectionBounds() {
 			bounds = selected[i].bounds.clone();
 		else
 			bounds = bounds.unite(selected[i].bounds);
+
+		//UPSTREAM Modification by ''nicholaswmin''. 'Transmit' width/height/x/y position values to input boxes in html page
+		    document.getElementById('elementXPosition').value =(bounds["x"].toFixed(2)+"  mm");
+		    document.getElementById('elementYPosition').value =(bounds["y"].toFixed(2)+"  mm");
+		    document.getElementById('elementWidth').value =(bounds["width"].toFixed(2)+"  mm");
+		    document.getElementById('elementHeight').value =(bounds["height"].toFixed(2)+"  mm");
 	}
 	return bounds;
 }

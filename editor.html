@@ -4,12 +4,15 @@
 	<meta charset="UTF-8">
 	<title>V.next 0.x</title>
 	<link rel="stylesheet" href="css/style.css">
+	<link rel="stylesheet" href="css/bootstrap/css/bootstrap.css">
+
+  
 	<script type="text/javascript" src="js/jquery.js"></script>
 	<script type="text/javascript" src="js/paper.js"></script>
 	<script type="text/javascript" src="js/editor.js"></script>
 
 	<!--Start adding non-upstream files -->
-
+    <script src="css/bootstrap/js/bootstrap.js"></script>
 	<!--This file is used for the startup settings of the app plus some more.  -->
 	<script type="text/javascript" src="v.next/js/ext-globalVariables.js"></script>
 	<!--The non-upstream editor.js extension that adds the additional functionality.  -->
@@ -35,7 +38,7 @@
 		<li id="tool-pen" class="button"><img src="img/icon-pen.png" /></li>
 		<li id="tool-zoompan" class="button"><img src="img/icon-hand.png" /></li>
 	</ul>
-    
+ 
     <!--ElementType buttons that allow the user to draw and illuminate elements on the canvas as either ''Materials, Holes, Vector Engravings,Raster Engravings''-->
     <ul id="tools_elementType">
 		<li id="tool-material" class="button"><img src="img/elementMaterial.png" /></li>
@@ -43,9 +46,10 @@
 		<li id="tool-rasterEngrave" class="button"><img src="img/elementRasterEngrave.png" /></li>
 		<li id="tool-vectorEngrave" class="button"><img src="img/elementVectorEngrave.png" /></li>
 	</ul>
-    
 
-    <!--Split a right toolbar that should contain tools that appear when elements are selected from the rest of the buttons-->
+
+    <!--Split a right toolbar that should contain tools, that appear only when elements are selected
+    -->
 	<ul id="tools_right">
 		<li id="cut" class="button"><img src="img/cut.png" /></li>
 		<li id="copy" class="button"><img src="img/copy.png" /></li>
@@ -53,6 +57,10 @@
 		<li id="delete" class="button"><img src="img/delete.png" /></li>
 		<li id="tool-moveFront" class="button"><img src="img/bringBackMost.png" /></li>
 		<li id="tool-moveFrontMost" class="button"><img src="img/bringFrontMost.png" /></li>
+		<li><input type="text" id="elementXPosition" class="form-control" placeholder="X position"></li>
+		<li><input type="text" id="elementYPosition" class="form-control" placeholder="Y position"> </li>
+		<li><input type="text" id="elementWidth" class="form-control" placeholder="Width"> </li>
+		<li><input type="text" id="elementHeight" class="form-control" placeholder="Height"> </li>
 	</ul>
 	<canvas id="canvas" resize></canvas>
 </body>

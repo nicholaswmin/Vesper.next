@@ -24,7 +24,7 @@ function bringToFrontSelection() {
 	undo.snapshot("Cut");
 }
 
-//The BoolOps/3D algorithms that are supposed to be plugged in later identify ''Materia;/Holes/Raster Engravings/Vector Engravings'' by their HTML colors. 
+//The BoolOps/3D algorithms that are supposed to be plugged in later identify ''Material/Holes/Raster Engravings/Vector Engravings'' by their HTML colors. 
 // So we need to ''illuminate'' each element on the canvas with it's respective HTML color. The HTML colors also help the user know what elementType he is currently
 //using
 
@@ -83,8 +83,61 @@ function setElementTypeRasterEngrave() {
 	undo.snapshot("Cut");
 }
 
+//Function that sets the selected element height. Because we cannot set the width/heights in absolute terms we sample what the current size and what the intended size
+//is. From those 2 values we calculate a coefficient we use for the scaling.
+	
+function setElementHeight() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+	var currentHeight = selected[i].bounds["height"];
+	var newHeight = document.getElementById('elementHeight').value;
+	var scaleCoefficient = newHeight/currentHeight;
+	selected[i].scale(1,scaleCoefficient);
+	}
+	undo.snapshot("Cut");
+}
+
+//Function that sets the selected element width. Because we cannot set the width/heights in absolute terms we sample what the current size and what the intended size
+//is. From those 2 values we calculate a coefficient we use for the scaling.
+
+function setElementWidth() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+	var currentWidth = selected[i].bounds["width"];
+	var newWidth = document.getElementById('elementWidth').value;
+	var scaleCoefficient = newWidth/currentWidth;
+	selected[i].scale(scaleCoefficient,1);
+	}
+	undo.snapshot("Cut");
+}
+
+//Cannot figure out how to place an element in absolute coordinates. Both x/y positions functions are empty.
+
+function setElementXPosition() {
+	
+}
+
+function setElementYPosition() {
+	
+}
+
+//Function that prevents the user from typing anything ELSE than NUMBERS in the x/y width/height input fields in the HTML file.
 
 $(document).ready(function() {
+
+
+$('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').keypress(function(e) {
+    var a = [];
+    var k = e.which;
+
+    for (i = 48; i < 58; i++)
+        a.push(i);
+
+    if (!(a.indexOf(k)>=0))
+        e.preventDefault();
+});
 
 //The following path is added at startup of the editor. It's supposed to represent the material size selected by the user
 //which is used for showing the users where to concentrate his elements. The boolOp/3D algorithms use this for the cutting rectangle.
@@ -120,5 +173,22 @@ $("#tool-material").click(function() {
 
 	$("#tool-moveFrontMost").click(function() {
 		bringToFrontSelection();
+	});
+
+//The following functions are triggered on an ''onChange'' event. 
+	$("#elementHeight").change(function() {
+		setElementHeight();
+	});
+
+	$("#elementWidth").change(function() {
+		setElementWidth();
+	});
+
+		$("#elementYPosition").change(function() {
+		setElementYPosition();
+	});
+
+		$("#elementXPosition").change(function() {
+		setElementXPosition();
 	});
 });
