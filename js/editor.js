@@ -3,7 +3,7 @@
 //Multiply every 'hitSize = 6.0' or something by 2. ->Makes grabbing handles such as vertices/resize/rotate handles easier to catch.
 //Add 'paper.project.options.handleSize = 8' to the beginning of the function updateSelectionState(). -> Makes grabbing handles such as vertices/resize/rotate handles easier to catch.
 
-
+"use strict";
 
 
 function Undo(maxUndos) {

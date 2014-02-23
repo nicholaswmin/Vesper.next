@@ -123,6 +123,18 @@ function setElementYPosition() {
 	
 }
 
+//Function that resets the input fields when nothing is selected. Triggered by clicking on the canvas.
+
+function resetInputFields(){
+	var selected = paper.project.selectedItems;
+	if (selected.length<1){
+		document.getElementById('elementXPosition').value ="X position";
+		document.getElementById('elementYPosition').value ="Y position";
+		document.getElementById('elementWidth').value ="Width";
+		document.getElementById('elementHeight').value ="Height";
+	}
+}
+
 //Function that prevents the user from typing anything ELSE than NUMBERS in the x/y width/height input fields in the HTML file.
 
 $(document).ready(function() {
@@ -190,5 +202,10 @@ $("#tool-material").click(function() {
 
 		$("#elementXPosition").change(function() {
 		setElementXPosition();
+	});
+
+			$("#canvas").click(function() {
+				resetInputFields();
+
 	});
 });
