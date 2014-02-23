@@ -17,7 +17,7 @@ can be remedied by minimizing and remaximizing the browser window. That's weird.
 #tools_right {
 	position: fixed;
 	left: 1100px;
-	width: 130px;
+	width: 90px;
 	top: 50px;
 	padding: 0;
 	background: #fff;
@@ -30,7 +30,7 @@ can be remedied by minimizing and remaximizing the browser window. That's weird.
 #tools_elementType {
 	position: fixed;
 	left: 40px;
-	top: 65px;
+	top: 50px;
 	padding: 0;
 	background: #fff;
 	background: #2F2F2C;

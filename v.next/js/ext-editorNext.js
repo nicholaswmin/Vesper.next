@@ -152,6 +152,28 @@ function setElementYPosition() {
 	
 }
 
+//Function to set rotation to +45 degrees on selected elements. Also calls get selectionBounds from editor.js to update the x,y width/heigh input fields upon rotation completion
+function rotateClockwise() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].rotate(45);
+		getSelectionBounds();
+
+	}
+	undo.snapshot("Cut");
+}
+
+function rotateCounterClockwise() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		selected[i].rotate(-45);
+		getSelectionBounds();
+
+	}
+	undo.snapshot("Cut");
+}
 //Function that hides the right tools when nothing is selected. Triggered by clicking on the canvas.
 
 function hideRightTools(){
@@ -210,6 +232,14 @@ $("#tool-material").click(function() {
 		bringToFrontSelection();
 	});
 
+	$("#toolRotateClockwise").click(function() {
+		rotateClockwise();
+	});
+
+	$("#toolRotateCounterClockwise").click(function() {
+		rotateCounterClockwise();
+	});
+
 //The following functions are triggered on an ''onChange'' event. The same functions are triggered when pressing ''ENTER'' key while typing. See section below this
 //snippet
 	$("#elementHeight").change(function() {
@@ -227,6 +257,8 @@ $("#tool-material").click(function() {
 		$("#elementXPosition").change(function() {
 		setElementXPosition();
 	});
+
+
 
 			$("#canvas").click(function() {
 				hideRightTools();
@@ -255,6 +287,7 @@ document.getElementById('elementXPosition').onkeydown = function(event) {
       setElementXPosition();
     }
 };
+
 
 $('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').click(function () {
     this.select();
