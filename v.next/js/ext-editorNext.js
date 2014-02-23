@@ -123,15 +123,13 @@ function setElementYPosition() {
 	
 }
 
-//Function that resets the input fields when nothing is selected. Triggered by clicking on the canvas.
+//Function that hides the right tools when nothing is selected. Triggered by clicking on the canvas.
 
 function resetInputFields(){
 	var selected = paper.project.selectedItems;
 	if (selected.length<1){
-		document.getElementById('elementXPosition').value ="X position";
-		document.getElementById('elementYPosition').value ="Y position";
-		document.getElementById('elementWidth').value ="Width";
-		document.getElementById('elementHeight').value ="Height";
+		$('#tools_right').hide();
+
 	}
 }
 
