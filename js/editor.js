@@ -570,10 +570,10 @@ function getSelectionBounds() {
 		//UPSTREAM Modification by ''nicholaswmin''. 'Transmit' width/height/x/y position values to input boxes in html page
 		//Also a jquery function that SHOWS RIGHT TOOLS when at least 1 item is in the ''selected'' array.
 		    $('#tools_right').show();
-		    document.getElementById('elementXPosition').value =(bounds["x"].toFixed(2)+"  mm");
-		    document.getElementById('elementYPosition').value =(bounds["y"].toFixed(2)+"  mm");
-		    document.getElementById('elementWidth').value =(bounds["width"].toFixed(2)+"  mm");
-		    document.getElementById('elementHeight').value =(bounds["height"].toFixed(2)+"  mm");
+		    document.getElementById('elementXPosition').value =(bounds["x"].toFixed(2));
+		    document.getElementById('elementYPosition').value =(bounds["y"].toFixed(2));
+		    document.getElementById('elementWidth').value =(bounds["width"].toFixed(2));
+		    document.getElementById('elementHeight').value =(bounds["height"].toFixed(2));
 	}
 	return bounds;
 }
