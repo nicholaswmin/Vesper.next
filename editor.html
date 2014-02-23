@@ -4,7 +4,6 @@
 	<meta charset="UTF-8">
 	<title>V.next 0.x</title>
 	<link rel="stylesheet" href="css/style.css">
-	<link rel="stylesheet" href="css/bootstrap/css/bootstrap.css">
 
   
 	<script type="text/javascript" src="js/jquery.js"></script>
@@ -19,52 +18,57 @@
 	<script type="text/javascript" src="v.next/js/ext-editorNext.js"></script>
 	<!--The jQuery plugin ''Numeric'' that restricts certain values from being entered in input fields-->
 	<script type="text/javascript" src="v.next/js/numeric.js"></script>
+	<!--Modernizr with all tests included-->
+	<script type="text/javascript" src="v.next/js/modernizr.js"></script>
+
 
 
 	<!--The non-upstream style.css extension that adds the additional functionality.  -->
 	<link rel="stylesheet" href="v.next/css/ext-styleNext.css">
+	<!--The BootStrap File.  -->
+	<link rel="stylesheet" href="v.next/css/bootstrap/css/bootstrap.css">
 
 
 </head>
 <body>
 	<!--Split undo toolbar from the rest of the buttons-->
 	<ul id="tools_undo">
-		<li id="undo" class="button"><img src="img/undo.png" /></li>
-		<li id="redo" class="button"><img src="img/redo.png" /></li>
+		<li id="undo" class="button"><img title="Undo" src="img/undo.png" /></li>
+		<li id="redo" class="button"><img title="Redo" src="img/redo.png" /></li>
 	</ul>
 
 
 	<ul id="tools">
-		<li id="tool-select" class="button"><img src="img/icon-arrow-black.png" /></li>
-		<li id="tool-direct-select" class="button"><img src="img/icon-arrow-white.png" /></li>
-		<li id="tool-pen" class="button"><img src="img/icon-pen.png" /></li>
-		<li id="tool-zoompan" class="button"><img src="img/icon-hand.png" /></li>
+		<li id="tool-select" class="button"><img title="Select/Move/Resize" src="img/icon-arrow-black.png" /></li>
+		<li id="tool-direct-select" class="button"><img title="Edit Points" src="img/icon-arrow-white.png" /></li>
+		<li id="tool-pen" class="button"><img title="Draw Shape" src="img/icon-pen.png" /></li>
+		<li id="tool-zoompan" class="button"><img title="Pan/Zoom" src="img/icon-hand.png" /></li>
 	</ul>
  
     <!--ElementType buttons that allow the user to draw and illuminate elements on the canvas as either ''Materials, Holes, Vector Engravings,Raster Engravings''-->
     <ul id="tools_elementType">
-		<li id="tool-material" class="button"><img src="img/elementMaterial.png" /></li>
-		<li id="tool-hole" class="button"><img src="img/elementHole.png" /></li>
-		<li id="tool-rasterEngrave" class="button"><img src="img/elementRasterEngrave.png" /></li>
-		<li id="tool-vectorEngrave" class="button"><img src="img/elementVectorEngrave.png" /></li>
+		<li id="tool-material" class="button"><img title="Add Material" src="img/elementMaterial.png" /></li>
+		<li id="tool-hole" class="button"><img title="Punch Hole" src="img/elementHole.png" /></li>
+		<li id="tool-rasterEngrave" class="button"><img title="Raster Engrave" src="img/elementRasterEngrave.png" /></li>
+		<li id="tool-vectorEngrave" class="button"><img title="Line Engrave" src="img/elementVectorEngrave.png" /></li>
 	</ul>
 
 
     <!--Split a right toolbar that should contain tools, that appear only when elements are selected
     -->
 	<ul id="tools_right">
-		<li id="cut" class="button"><img src="img/cut.png" /></li>
-		<li id="copy" class="button"><img src="img/copy.png" /></li>
-		<li id="paste" class="button"><img src="img/paste.png" /></li>
-		<li id="delete" class="button"><img src="img/delete.png" /></li>
-		<li id="tool-moveFront" class="button"><img src="img/bringBackMost.png" /></li>
-		<li id="tool-moveFrontMost" class="button"><img src="img/bringFrontMost.png" /></li>
+		<li id="cut" class="button"><img title="Cut" src="img/cut.png" /></li>
+		<li id="copy" class="button"><img title="Copy" src="img/copy.png" /></li>
+		<li id="paste" class="button"><img title="Paste" src="img/paste.png" /></li>
+		<li id="delete" class="button"><img title="Delete" src="img/delete.png" /></li>
+		<li id="tool-moveFront" class="button"><img title="Send Back" src="img/bringBackMost.png" /></li>
+		<li id="tool-moveFrontMost" class="button"><img title="Bring Front" src="img/bringFrontMost.png" /></li>
 
 	   <!--Split a right toolbar that should contain tools, that appear only when elements are selected
     -->	
 		<li><input type="text" id="elementXPosition" class="form-control" placeholder="X position"></li>
-		<li><input type="text" id="elementYPosition" class="form-control" placeholder="Y position"> </li>
-		<li><input type="text" id="elementWidth" class="form-control" placeholder="Width"> </li>
+		<li><input type="text" id="elementYPosition" class="form-control" placeholder="Y position"></li>
+		<li><input type="text" id="elementWidth" class="form-control" placeholder="Width"></li>
 		<li><input type="text" id="elementHeight" class="form-control" placeholder="Height"></li>
 	</ul>
 	<canvas id="canvas" resize></canvas>

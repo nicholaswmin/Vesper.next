@@ -1690,15 +1690,16 @@ output {
 }
 .form-control {
   display: block;
-  width: 100%;
+  width: 60%;
   height: 34px;
   padding: 6px 12px;
-  font-size: 14px;
+  margin: 5px 5px 5px 5px;
+  font-size: 12px;
   line-height: 1.42857143;
-  color: #555;
-  background-color: #fff;
+  color: #00CCFF;
+  background-color: #2F2F2C;
   background-image: none;
-  border: 1px solid #ccc;
+  border: 0px solid #ccc;
   border-radius: 4px;
   -webkit-box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);
           box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075);

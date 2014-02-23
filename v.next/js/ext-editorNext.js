@@ -166,6 +166,7 @@ function hideRightTools(){
 
 $(document).ready(function() {
 
+$('#tools_right').hide();
 
 
 $("#elementXPosition,#elementYPosition,#elementWidth,#elementHeight").numeric();
