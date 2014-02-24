@@ -1,6 +1,16 @@
 /*For some reason, splitting here the non-upstream CSS from the upstream file generates a stupid white bar in the bottom of the Chrome Canary browser which
 can be remedied by minimizing and remaximizing the browser window. That's weird. */
-
+#tools_top {
+	position: fixed;
+	left: 40px;
+	width:auto;
+	top: 580px;
+	padding: 0;
+	background: #fff;
+	background: #2F2F2C;
+	margin: 0;
+	box-shadow: 0px 3px 6px rgba(0,0,0,0.4);
+}
 
 #tools_undo {
 	position: fixed;

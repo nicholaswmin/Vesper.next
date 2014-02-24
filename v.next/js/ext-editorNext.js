@@ -142,6 +142,33 @@ function setElementWidth() {
 	undo.snapshot("Cut");
 }
 
+function flipHorizontally() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	//Do an if/else here to detect if "0" is passed as the new width. If that's true then set the element width to 1 because ''0'' is actually an invalid value
+	for (var i = 0; i < selected.length; i++) {
+
+	selected[i].scale(-1,1);
+	 	
+	 }
+
+	undo.snapshot("Cut");
+}
+
+function flipVertically() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	//Do an if/else here to detect if "0" is passed as the new width. If that's true then set the element width to 1 because ''0'' is actually an invalid value
+	for (var i = 0; i < selected.length; i++) {
+
+	selected[i].scale(1,-1);
+	 	
+	 }
+
+	undo.snapshot("Cut");
+}
+
+
 //Cannot figure out how to place an element in absolute coordinates. Both x/y positions functions are empty.
 
 function setElementXPosition() {
@@ -183,6 +210,21 @@ function hideRightTools(){
 
 	}
 }
+
+
+function goFullScreen() {
+	  var
+          el = document.documentElement
+        , rfs =
+               el.requestFullScreen
+            || el.webkitRequestFullScreen
+            || el.mozRequestFullScreen
+            || el.msRequestFullscreen
+
+    ;
+    rfs.call(el);
+}
+
 
 //Function that prevents the user from typing anything ELSE than NUMBERS in the x/y width/height input fields in the HTML file. Uses ''numeric.js'' file.
 
@@ -240,6 +282,21 @@ $("#tool-material").click(function() {
 		rotateCounterClockwise();
 	});
 
+	$("#toolFlipHorizontally").click(function() {
+		flipHorizontally();
+	});
+
+	$("#toolFlipVertically").click(function() {
+		flipVertically();
+	});
+
+
+	$("#toolFullScreen").click(function() {
+		goFullScreen();
+	});
+
+
+
 //The following functions are triggered on an ''onChange'' event. The same functions are triggered when pressing ''ENTER'' key while typing. See section below this
 //snippet
 	$("#elementHeight").change(function() {
@@ -292,5 +349,50 @@ document.getElementById('elementXPosition').onkeydown = function(event) {
 $('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').click(function () {
     this.select();
 });
+
+//Keybidings for various things
+
+$(document).keydown(function(e){
+      if( e.which === 90 && e.ctrlKey){
+         undo.undo();
+      }
+}); 
+
+$(document).keydown(function(e){
+      if( e.which === 89 && e.ctrlKey){
+         undo.redo();
+      }
+}); 
+
+$(document).keydown(function(e){
+      if(e.which === 46){
+         deleteSelection();
+      }
+}); 
+
+$(document).keydown(function(e){
+      if( e.which === 67 && e.ctrlKey){
+        copySelection();
+      }
+}); 
+
+$(document).keydown(function(e){
+      if( e.which === 86 && e.ctrlKey){
+        pasteSelection();
+      }
+}); 
+
+$(document).keydown(function(e){
+      if( e.which === 38 && e.ctrlKey){
+        bringToFrontSelection();
+      }
+}); 
+
+$(document).keydown(function(e){
+      if( e.which === 40 && e.ctrlKey){
+        bringToBackSelection();
+      }
+}); 
+
 
 });
