@@ -226,6 +226,14 @@ function goFullScreen() {
 }
 
 
+function prepareSVGExport(){
+
+var svg = paper.project.exportSVG();
+console.log(svg);
+}
+
+
+
 //Function that prevents the user from typing anything ELSE than NUMBERS in the x/y width/height input fields in the HTML file. Uses ''numeric.js'' file.
 
 $(document).ready(function() {
@@ -295,6 +303,12 @@ $("#tool-material").click(function() {
 		goFullScreen();
 	});
 
+	$("#toolExportSVG").click(function() {
+		prepareSVGExport();
+	});
+
+
+
 
 
 //The following functions are triggered on an ''onChange'' event. The same functions are triggered when pressing ''ENTER'' key while typing. See section below this
@@ -354,13 +368,19 @@ $('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').click(func
 
 $(document).keydown(function(e){
       if( e.which === 90 && e.ctrlKey){
-         undo.undo();
+        toolStack.command(function() {
+			if (undo.canUndo())
+				undo.undo();
+		});
       }
 }); 
 
 $(document).keydown(function(e){
       if( e.which === 89 && e.ctrlKey){
-         undo.redo();
+   	toolStack.command(function() {
+			if (undo.canRedo())
+				undo.redo();
+		});
       }
 }); 
 
