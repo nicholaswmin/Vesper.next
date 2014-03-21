@@ -172,10 +172,32 @@ function flipVertically() {
 //Cannot figure out how to place an element in absolute coordinates. Both x/y positions functions are empty.
 
 function setElementXPosition() {
-	
+
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	var newXPosition = parseInt(document.getElementById('elementXPosition').value);
+	for (var i = 0; i < selected.length; i++) {
+	var currentWidth = selected[i].bounds["width"];
+	finalXPosition = newXPosition + (currentWidth/2);
+	selected[i].position.x = (finalXPosition);
+	 	
+	}
+	undo.snapshot("Cut");
 }
+	
 
 function setElementYPosition() {
+
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	var newYPosition = parseInt(document.getElementById('elementYPosition').value);
+	for (var i = 0; i < selected.length; i++) {
+	var currentHeight = selected[i].bounds["height"];
+	finalYPosition = newYPosition + (currentHeight/2);
+	selected[i].position.y = (finalYPosition);
+	 	
+	}
+	undo.snapshot("Cut");
 	
 }
 
