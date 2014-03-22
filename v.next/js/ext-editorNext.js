@@ -195,6 +195,7 @@ function setElementYPosition() {
 	var newYPosition = parseInt(document.getElementById('elementYPosition').value);
 	for (var i = 0; i < selected.length; i++) {
 	var currentHeight = selected[i].bounds["height"];
+		//We need to divide the height by 2 and add it here because .position.x just sets the center position
 	finalYPosition = newYPosition + (currentHeight/2);
 	selected[i].position.y = (finalYPosition);
 	 	
