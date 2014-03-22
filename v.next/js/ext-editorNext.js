@@ -178,6 +178,7 @@ function setElementXPosition() {
 	var newXPosition = parseInt(document.getElementById('elementXPosition').value);
 	for (var i = 0; i < selected.length; i++) {
 	var currentWidth = selected[i].bounds["width"];
+	//We need to divide the width by 2 and add it here because .position.x just sets the center position
 	finalXPosition = newXPosition + (currentWidth/2);
 	selected[i].position.x = (finalXPosition);
 	 	
@@ -185,6 +186,7 @@ function setElementXPosition() {
 	undo.snapshot("Cut");
 }
 	
+
 
 function setElementYPosition() {
 

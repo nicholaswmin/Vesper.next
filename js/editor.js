@@ -1578,7 +1578,6 @@ toolPen.on({
 			if (this.hitResult != null) {
 				this.hitResult.item.removeSegment(this.hitResult.segment.index);
 				this.hitResult = null;
-				
 			}
 		}
 

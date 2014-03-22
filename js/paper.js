@@ -9,7 +9,7 @@
  *
  * All rights reserved.
  *
- * Date: Sun Dec 1 23:54:52 2013 +0100
+ * Date: Mon Dec 30 23:34:19 2013 +0100
  *
  ***
  *
@@ -33,8 +33,7 @@
 var paper = new function(undefined) {
 
 var Base = new function() {
-	var hidden = /^(statics|generics|preserve|enumerable|prototype|toString|valueOf)$/,
-		slice = [].slice,
+	var hidden = /^(statics|preserve|enumerable|prototype|toString|valueOf)$/,
 
 		forEach = [].forEach || function(iter, bind) {
 			for (var i = 0, l = this.length; i < l; i++)
@@ -79,10 +78,10 @@ var Base = new function() {
 			return _define(obj, name, desc);
 		};
 
-	function inject(dest, src, enumerable, base, preserve, generics) {
+	function inject(dest, src, enumerable, base, preserve) {
 		var beans;
 
-		function field(name, val, dontCheck, generics) {
+		function field(name, val, dontCheck) {
 			var val = val || (val = describe(src, name))
 					&& (val.get ? val : val.value);
 			if (typeof val === 'string' && val[0] === '#')
@@ -96,8 +95,9 @@ var Base = new function() {
 					&& (!preserve || !prev)) {
 				if (isFunc && prev)
 					val.base = prev;
-				if (isFunc && beans && val.length === 0
-						&& (bean = name.match(/^(get|is)(([A-Z])(.*))$/)))
+				if (isFunc && beans
+						&& (bean = name.match(/^([gs]et|is)(([A-Z])(.*))$/))
+						&& val.length === (bean[1] === 'set' ? 1 : 0))
 					beans.push([ bean[3].toLowerCase() + bean[4], bean[2] ]);
 				if (!res || isFunc || !res.get || typeof res.get !== 'function'
 						|| res.get.length !== 0)
@@ -109,18 +109,12 @@ var Base = new function() {
 				}
 				define(dest, name, res);
 			}
-			if (generics && isFunc && (!preserve || !generics[name])) {
-				generics[name] = function(bind) {
-					return bind && dest[name].apply(bind,
-							slice.call(arguments, 1));
-				};
-			}
 		}
 		if (src) {
 			beans = [];
 			for (var name in src)
 				if (src.hasOwnProperty(name) && !hidden.test(name))
-					field(name, null, true, generics);
+					field(name, null, true);
 			field('toString');
 			field('valueOf');
 			for (var i = 0, l = beans.length; i < l; i++) {
@@ -151,10 +145,6 @@ var Base = new function() {
 		return dest;
 	}
 
-	function clone(obj) {
-		return copy(new obj.constructor(), obj);
-	}
-
 	return inject(function Base() {
 		for (var i = 0, l = arguments.length; i < l; i++)
 			copy(this, arguments[i]);
@@ -166,7 +156,7 @@ var Base = new function() {
 					statics = src.statics === true ? src : src.statics;
 				if (statics != src)
 					inject(proto, src, src.enumerable, base && base.prototype,
-							src.preserve, src.generics && this);
+							src.preserve);
 				inject(this, statics, true, base, src.preserve);
 			}
 			for (var i = 1, l = arguments.length; i < l; i++)
@@ -184,6 +174,7 @@ var Base = new function() {
 				base.apply(this, arguments);
 			};
 			ctor.prototype = create(this.prototype);
+			ctor.base = base;
 			define(ctor.prototype, 'constructor',
 					{ value: ctor, writable: true, configurable: true });
 			inject(ctor, this, true);
@@ -240,8 +231,6 @@ if (typeof module !== 'undefined')
 	module.exports = Base;
 
 Base.inject({
-	generics: true,
-
 	toString: function() {
 		return this._id != null
 			?  (this._class || 'Object') + (this._name
@@ -319,7 +308,8 @@ Base.inject({
 				if (!checkKeys(obj1, obj2) || !checkKeys(obj2, obj1))
 					return false;
 				for (var i in obj1) {
-					if (obj1.hasOwnProperty(i) && !Base.equals(obj1[i], obj2[i]))
+					if (obj1.hasOwnProperty(i)
+							&& !Base.equals(obj1[i], obj2[i]))
 						return false;
 				}
 				return true;
@@ -464,7 +454,8 @@ Base.inject({
 		},
 
 		deserialize: function(json, create, _data) {
-			var res = json;
+			var res = json,
+				isRoot = !_data;
 			_data = _data || {};
 			if (Array.isArray(json)) {
 				var type = json[0],
@@ -482,7 +473,7 @@ Base.inject({
 				} else if (type) {
 					var args = res;
 					if (create) {
-						res = create(type, args);
+						res = create(type, args, isRoot);
 					} else {
 						res = Base.create(type.prototype);
 						type.apply(res, args);
@@ -497,18 +488,21 @@ Base.inject({
 		},
 
 		exportJSON: function(obj, options) {
-			return JSON.stringify(Base.serialize(obj, options));
+			var json = Base.serialize(obj, options);
+			return options && options.asString === false
+					? json
+					: JSON.stringify(json);
 		},
 
 		importJSON: function(json, target) {
 			return Base.deserialize(
 					typeof json === 'string' ? JSON.parse(json) : json,
-					function(type, args) {
+					function(type, args, isRoot) {
 						var obj = target && target.constructor === type
 								? target
 								: Base.create(type.prototype),
 							isTarget = obj === target;
-						if (args.length === 1 && obj instanceof Item
+						if (!isRoot && args.length === 1 && obj instanceof Item
 								&& (!(obj instanceof Layer) || isTarget)) {
 							var arg = args[0];
 							if (Base.isPlainObject(arg))
@@ -624,11 +618,12 @@ var Callback = {
 		function callHandlers() {
 			for (var i in handlers) {
 				if (handlers[i].apply(that, args) === false
-						&& event && event.stop)
+						&& event && event.stop) {
 					event.stop();
+					break;
+				}
 			}
 		}
-
 		if (handleException) {
 			try {
 				callHandlers();
@@ -649,6 +644,19 @@ var Callback = {
 	off: '#detach',
 	trigger: '#fire',
 
+	_installEvents: function(install) {
+		var handlers = this._handlers,
+			key = install ? 'install' : 'uninstall';
+		for (var type in handlers) {
+			if (handlers[type].length > 0) {
+				var entry = this._eventTypes[type],
+					func = entry[key];
+				if (func)
+					func.call(this, type);
+			}
+		}
+	},
+
 	statics: {
 		inject: function inject() {
 			for (var i = 0, l = arguments.length; i < l; i++) {
@@ -667,11 +675,11 @@ var Callback = {
 							return this[name];
 						};
 						src['set' + part] = function(func) {
-							if (func) {
+							var prev = this[name];
+							if (prev)
+								this.detach(type, prev);
+							if (func)
 								this.attach(type, func);
-							} else if (this[name]) {
-								this.detach(type, this[name]);
-							}
 							this[name] = func;
 						};
 					});
@@ -898,15 +906,29 @@ var Numerical = new function() {
 		sqrt = Math.sqrt,
 		pow = Math.pow,
 		cos = Math.cos,
-		PI = Math.PI;
+		PI = Math.PI,
+		TOLERANCE = 10e-6,
+		EPSILON = 10e-12;
+
+	function setupRoots(roots, min, max) {
+		var unbound = min === undefined,
+			minE = min - EPSILON,
+			maxE = max + EPSILON,
+			count = 0;
+		return function(root) {
+			if (unbound || root > minE && root < maxE)
+				roots[count++] = root < min ? min : root > max ? max : root;
+			return count;
+		};
+	}
 
 	return {
-		TOLERANCE: 10e-6,
-		EPSILON: 10e-12,
+		TOLERANCE: TOLERANCE,
+		EPSILON: EPSILON,
 		KAPPA: 4 * (sqrt(2) - 1) / 3,
 
 		isZero: function(val) {
-			return abs(val) <= Numerical.EPSILON;
+			return abs(val) <= EPSILON;
 		},
 
 		integrate: function(f, a, b, n) {
@@ -927,10 +949,10 @@ var Numerical = new function() {
 		findRoot: function(f, df, x, a, b, n, tolerance) {
 			for (var i = 0; i < n; i++) {
 				var fx = f(x),
-					dx = fx / df(x);
+					dx = fx / df(x),
+					nx = x - dx;
 				if (abs(dx) < tolerance)
-					return x;
-				var nx = x - dx;
+					return nx;
 				if (fx > 0) {
 					b = x;
 					x = nx <= a ? 0.5 * (a + b) : nx;
@@ -939,65 +961,45 @@ var Numerical = new function() {
 					x = nx >= b ? 0.5 * (a + b) : nx;
 				}
 			}
+			return x;
 		},
 
 		solveQuadratic: function(a, b, c, roots, min, max) {
-			var epsilon = Numerical.EPSILON,
-				unbound = min === undefined,
-				minE = min - epsilon,
-				maxE = max + epsilon,
-				count = 0;
+			var add = setupRoots(roots, min, max);
 
-			function add(root) {
-				if (unbound || root > minE && root < maxE)
-					roots[count++] = root < min ? min : root > max ? max : root;
-				return count;
-			}
-
-			if (abs(a) < epsilon) {
-				if (abs(b) >= epsilon)
+			if (abs(a) < EPSILON) {
+				if (abs(b) >= EPSILON)
 					return add(-c / b);
-				return abs(c) < epsilon ? -1 : 0; 
+				return abs(c) < EPSILON ? -1 : 0; 
 			}
 			var p = b / (2 * a);
 			var q = c / a;
 			var p2 = p * p;
-			if (p2 < q - epsilon)
+			if (p2 < q - EPSILON)
 				return 0;
-			var s = p2 > q ? sqrt(p2 - q) : 0;
-			add (s - p);
+			var s = p2 > q ? sqrt(p2 - q) : 0,
+				count = add(s - p);
 			if (s > 0)
-				add(-s - p);
+				count = add(-s - p);
 			return count;
 		},
 
 		solveCubic: function(a, b, c, d, roots, min, max) {
-			var epsilon = Numerical.EPSILON;
-			if (abs(a) < epsilon)
+			if (abs(a) < EPSILON)
 				return Numerical.solveQuadratic(b, c, d, roots, min, max);
-
-			var unbound = min === undefined,
-				minE = min - epsilon,
-				maxE = max + epsilon,
-				count = 0;
-
-			function add(root) {
-				if (unbound || root > minE && root < maxE)
-					roots[count++] = root < min ? min : root > max ? max : root;
-				return count;
-			}
 
 			b /= a;
 			c /= a;
 			d /= a;
-			var bb = b * b,
+			var add = setupRoots(roots, min, max),
+				bb = b * b,
 				p = (bb - 3 * c) / 9,
 				q = (2 * bb * b - 9 * b * c + 27 * d) / 54,
 				ppp = p * p * p,
 				D = q * q - ppp;
 			b /= 3;
-			if (abs(D) < epsilon) {
-				if (abs(q) < epsilon) 
+			if (abs(D) < EPSILON) {
+				if (abs(q) < EPSILON) 
 					return add(-b);
 				var sqp = sqrt(p),
 					snq = q > 0 ? 1 : -1;
@@ -1128,8 +1130,7 @@ var Point = Base.extend({
 	},
 
 	getLength: function() {
-		var length = this.x * this.x + this.y * this.y;
-		return arguments.length && arguments[0] ? length : Math.sqrt(length);
+		return Math.sqrt(this.x * this.x + this.y * this.y);
 	},
 
 	setLength: function(length) {
@@ -1595,8 +1596,8 @@ var Rectangle = Base.extend({
 	},
 
 	getPoint: function() {
-		return new (arguments[0] ? Point : LinkedPoint)
-				(this.x, this.y, this, 'setPoint');
+		var ctor = arguments[0] ? Point : LinkedPoint;
+		return new ctor(this.x, this.y, this, 'setPoint');
 	},
 
 	setPoint: function(point) {
@@ -1606,8 +1607,8 @@ var Rectangle = Base.extend({
 	},
 
 	getSize: function() {
-		return new (arguments[0] ? Size : LinkedSize)
-				(this.width, this.height, this, 'setSize');
+		var ctor = arguments[0] ? Size : LinkedSize;
+		return new ctor(this.width, this.height, this, 'setSize');
 	},
 
 	setSize: function(size) {
@@ -1691,8 +1692,8 @@ var Rectangle = Base.extend({
 	},
 
 	getCenter: function() {
-		return new (arguments[0] ? Point : LinkedPoint)
-				(this.getCenterX(), this.getCenterY(), this, 'setCenter');
+		var ctor = arguments[0] ? Point : LinkedPoint;
+		return new ctor(this.getCenterX(), this.getCenterY(), this, 'setCenter');
 	},
 
 	setCenter: function(point) {
@@ -1702,8 +1703,12 @@ var Rectangle = Base.extend({
 		return this;
 	},
 
+	getArea: function() {
+		return this.width * this.height;
+	},
+
 	isEmpty: function() {
-		return this.width == 0 || this.height == 0;
+		return this.width === 0 || this.height === 0;
 	},
 
 	contains: function(arg) {
@@ -1772,9 +1777,10 @@ var Rectangle = Base.extend({
 		return new Rectangle(x1, y1, x2 - x1, y2 - y1);
 	},
 
-	expand: function(hor, ver) {
-		if (ver === undefined)
-			ver = hor;
+	expand: function() {
+		var amount = Size.read(arguments),
+			hor = amount.width,
+			ver = amount.height;
 		return new Rectangle(this.x - hor / 2, this.y - ver / 2,
 				this.width + hor, this.height + ver);
 	},
@@ -1804,8 +1810,8 @@ var Rectangle = Base.extend({
 				get = 'get' + part,
 				set = 'set' + part;
 			this[get] = function() {
-				return new (arguments[0] ? Point : LinkedPoint)
-						(this[getX](), this[getY](), this, set);
+				var ctor = arguments[0] ? Point : LinkedPoint;
+				return new ctor(this[getX](), this[getY](), this, set);
 			};
 			this[set] = function(point) {
 				point = Point.read(arguments);
@@ -1947,6 +1953,16 @@ var Matrix = Base.extend({
 		return this;
 	},
 
+	translate: function() {
+		var point = Point.read(arguments),
+			x = point.x,
+			y = point.y;
+		this._tx += x * this._a + y * this._b;
+		this._ty += x * this._c + y * this._d;
+		this._changed();
+		return this;
+	},
+
 	scale: function() {
 		var scale = Point.read(arguments),
 			center = Point.read(arguments, 0, 0, { readNull: true });
@@ -1962,19 +1978,9 @@ var Matrix = Base.extend({
 		return this;
 	},
 
-	translate: function(point) {
-		point = Point.read(arguments);
-		var x = point.x,
-			y = point.y;
-		this._tx += x * this._a + y * this._b;
-		this._ty += x * this._c + y * this._d;
-		this._changed();
-		return this;
-	},
-
 	rotate: function(angle, center) {
 		center = Point.read(arguments, 1);
-		angle = angle * Math.PI / 180;
+		angle *= Math.PI / 180;
 		var x = center.x,
 			y = center.y,
 			cos = Math.cos(angle),
@@ -1996,20 +2002,29 @@ var Matrix = Base.extend({
 	},
 
 	shear: function() {
-		var point = Point.read(arguments),
+		var shear = Point.read(arguments),
 			center = Point.read(arguments, 0, 0, { readNull: true });
 		if (center)
 			this.translate(center);
 		var a = this._a,
 			c = this._c;
-		this._a += point.y * this._b;
-		this._c += point.y * this._d;
-		this._b += point.x * a;
-		this._d += point.x * c;
+		this._a += shear.y * this._b;
+		this._c += shear.y * this._d;
+		this._b += shear.x * a;
+		this._d += shear.x * c;
 		if (center)
 			this.translate(center.negate());
 		this._changed();
 		return this;
+	},
+
+	skew: function() {
+		var skew = Point.read(arguments),
+			center = Point.read(arguments, 0, 0, { readNull: true }),
+			toRadians = Math.PI / 180,
+			shear = new Point(Math.tan(skew.x * toRadians),
+				Math.tan(skew.y * toRadians));
+		return this.shear(shear, center);
 	},
 
 	concatenate: function(mx) {
@@ -2047,6 +2062,10 @@ var Matrix = Base.extend({
 	isIdentity: function() {
 		return this._a === 1 && this._c === 0 && this._b === 0 && this._d === 1
 				&& this._tx === 0 && this._ty === 0;
+	},
+
+	orNullIfIdentity: function() {
+		return this.isIdentity() ? null : this;
 	},
 
 	isInvertible: function() {
@@ -2167,7 +2186,6 @@ var Matrix = Base.extend({
 		}
 
 		return {
-			translation: this.getTranslation(),
 			scaling: new Point(scaleX, scaleY),
 			rotation: -Math.atan2(b, a) * 180 / Math.PI,
 			shearing: shear
@@ -2182,34 +2200,12 @@ var Matrix = Base.extend({
 		return new Point(this._tx, this._ty);
 	},
 
-	setTranslation: function() {
-		var point = Point.read(arguments);
-		this._tx = point.x;
-		this._ty = point.y;
-		this._changed();
-	},
-
 	getScaling: function() {
 		return (this.decompose() || {}).scaling;
 	},
 
-	setScaling: function() {
-		var scaling = this.getScaling();
-		if (scaling != null) {
-			var scale = Point.read(arguments);
-			(this._owner || this).scale(
-					scale.x / scaling.x, scale.y / scaling.y);
-		}
-	},
-
 	getRotation: function() {
 		return (this.decompose() || {}).rotation;
-	},
-
-	setRotation: function(angle) {
-		var rotation = this.getRotation();
-		if (rotation != null)
-			(this._owner || this).rotate(angle - rotation);
 	},
 
 	inverted: function() {
@@ -2231,19 +2227,13 @@ var Matrix = Base.extend({
 		ctx.transform(this._a, this._c, this._b, this._d, this._tx, this._ty);
 	}
 }, new function() {
-	return Base.each({
-		scaleX: '_a',
-		scaleY: '_d',
-		translateX: '_tx',
-		translateY: '_ty',
-		shearX: '_b',
-		shearY: '_c'
-	}, function(prop, name) {
-		name = Base.capitalize(name);
-		this['get' + name] = function() {
+	return Base.each(['a', 'c', 'b', 'd', 'tx', 'ty'], function(name) {
+		var part = Base.capitalize(name),
+			prop = '_' + name;
+		this['get' + part] = function() {
 			return this[prop];
 		};
-		this['set' + name] = function(value) {
+		this['set' + part] = function(value) {
 			this[prop] = value;
 			this._changed();
 		};
@@ -2376,7 +2366,7 @@ var Project = PaperScopeItem.extend({
 			this.view = view instanceof View ? view : View.create(view);
 		this._selectedItems = {};
 		this._selectedItemCount = 0;
-		this._drawCount = 0;
+		this._updateVersion = 0;
 		this.options = {};
 	},
 
@@ -2506,13 +2496,12 @@ var Project = PaperScopeItem.extend({
 	},
 
 	draw: function(ctx, matrix, ratio) {
-		this._drawCount++;
+		this._updateVersion++;
 		ctx.save();
 		matrix.applyToContext(ctx);
 		var param = new Base({
 			offset: new Point(0, 0),
 			ratio: ratio,
-			transforms: [matrix],
 			trackTransforms: true
 		});
 		for (var i = 0, l = this.layers.length; i < l; i++)
@@ -2524,18 +2513,18 @@ var Project = PaperScopeItem.extend({
 			ctx.strokeWidth = 1;
 			for (var id in this._selectedItems) {
 				var item = this._selectedItems[id];
-				if (item._drawCount === this._drawCount
+				if (item._updateVersion === this._updateVersion
 						&& (item._drawSelected || item._boundsSelected)) {
 					var color = item.getSelectedColor()
 							|| item.getLayer().getSelectedColor();
 					ctx.strokeStyle = ctx.fillStyle = color
 							? color.toCanvasStyle(ctx) : '#009dec';
-					var mx = item._globalMatrix;
+					var mx = matrix.clone().concatenate(item._globalMatrix);
 					if (item._drawSelected)
 						item._drawSelected(ctx, mx);
 					if (item._boundsSelected) {
 						var coords = mx._transformCorners(
-								item._getBounds('getBounds'));
+								item.getInternalBounds());
 						ctx.beginPath();
 						for (var i = 0; i < 8; i++)
 							ctx[i === 0 ? 'moveTo' : 'lineTo'](
@@ -2564,7 +2553,6 @@ var Symbol = Base.extend({
 		this.project.symbols.push(this);
 		if (item)
 			this.setDefinition(item, dontCenter);
-		this._instances = {};
 	},
 
 	_serialize: function(options, dictionary) {
@@ -2575,9 +2563,12 @@ var Symbol = Base.extend({
 	},
 
 	_changed: function(flags) {
-		Base.each(this._instances, function(item) {
-			item._changed(flags);
-		});
+		if (flags & 4) {
+			Item._clearBoundsCache(this);
+		}
+		if (flags & 1) {
+			this.project._needsUpdate = true;
+		}
 	},
 
 	getDefinition: function() {
@@ -2625,9 +2616,11 @@ var Item = Base.extend(Callback, {
 	_class: 'Item',
 	_transformContent: true,
 	_boundsSelected: false,
+	_selectChildren: false,
 	_serializeFields: {
 		name: null,
 		matrix: new Matrix(),
+		pivot: null,
 		locked: false,
 		visible: true,
 		blendMode: 'normal',
@@ -2642,20 +2635,22 @@ var Item = Base.extend(Callback, {
 	},
 
 	_initialize: function(props, point) {
-		this._id = Item._id = (Item._id || 0) + 1;
+		var internal = props && props.internal === true;
+		if (!internal)
+			this._id = Item._id = (Item._id || 0) + 1;
+		var matrix = this._matrix = new Matrix();
+		if (point)
+			matrix.translate(point);
+		matrix._owner = this;
 		if (!this._project) {
 			var project = paper.project;
-			if (props && props.insert === false) {
+			if (internal || props && props.insert === false) {
 				this._setProject(project);
 			} else {
 				(project.activeLayer || new Layer()).addChild(this);
 			}
 		}
 		this._style = new Style(this._project._currentStyle, this);
-		var matrix = this._matrix = new Matrix();
-		if (point)
-			matrix.translate(point);
-		matrix._owner = this;
 		return props ? this._set(props, { insert: true }) : true;
 	},
 
@@ -2746,24 +2741,25 @@ var Item = Base.extend(Callback, {
 	},
 
 	_changed: function(flags) {
-		var parent = this._parent,
-			project = this._project,
-			symbol = this._parentSymbol;
-		this._drawCount = null;
+		var symbol = this._parentSymbol,
+			cacheParent = this._parent || symbol,
+			project = this._project;
 		if (flags & 4) {
 			delete this._bounds;
 			delete this._position;
+			delete this._decomposed;
+			delete this._globalMatrix;
 		}
-		if (parent && (flags
+		if (cacheParent && (flags
 				& (4 | 8))) {
-			parent._clearBoundsCache();
+			Item._clearBoundsCache(cacheParent);
 		}
 		if (flags & 2) {
-			this._clearBoundsCache();
+			Item._clearBoundsCache(this);
 		}
 		if (project) {
 			if (flags & 1) {
-				project._needsRedraw = true;
+				project._needsUpdate = true;
 			}
 			if (project._changes) {
 				var entry = project._changesById[this._id];
@@ -2782,7 +2778,7 @@ var Item = Base.extend(Callback, {
 
 	set: function(props) {
 		if (props)
-			this._set(props);
+			this._set(props, { insert: true });
 		return this;
 	},
 
@@ -2865,7 +2861,7 @@ var Item = Base.extend(Callback, {
 	_guide: false,
 
 	isSelected: function() {
-		if (this._children) {
+		if (this._selectChildren) {
 			for (var i = 0, l = this._children.length; i < l; i++)
 				if (this._children[i].isSelected())
 					return true;
@@ -2873,12 +2869,12 @@ var Item = Base.extend(Callback, {
 		return this._selected;
 	},
 
-	setSelected: function(selected ) {
-		if (this._children && !arguments[1]) {
+	setSelected: function(selected, noChildren) {
+		if (!noChildren && this._selectChildren) {
 			for (var i = 0, l = this._children.length; i < l; i++)
 				this._children[i].setSelected(selected);
 		}
-		if ((selected = !!selected) != this._selected) {
+		if ((selected = !!selected) ^ this._selected) {
 			this._selected = selected;
 			this._project._updateSelection(this);
 			this._changed(33);
@@ -2935,70 +2931,57 @@ var Item = Base.extend(Callback, {
 	},
 
 	getPosition: function() {
-		var pos = this._position
-				|| (this._position = this.getBounds().getCenter(true));
-		return new (arguments[0] ? Point : LinkedPoint)
-				(pos.x, pos.y, this, 'setPosition');
+		var position = this._position,
+			ctor = arguments[0] ? Point : LinkedPoint;
+		if (!position) {
+			var pivot = this._pivot;
+			position = this._position = pivot
+					? this._matrix._transformPoint(pivot)
+					: this.getBounds().getCenter(true);
+		}
+		return new ctor(position.x, position.y, this, 'setPosition');
 	},
 
 	setPosition: function() {
 		this.translate(Point.read(arguments).subtract(this.getPosition(true)));
-	}
-}, Base.each(['getBounds', 'getStrokeBounds', 'getHandleBounds', 'getRoughBounds'],
-	function(name) {
-		this[name] = function() {
+	},
+
+	getPivot: function() {
+		var pivot = this._pivot;
+		if (pivot) {
+			var ctor = arguments[0] ? Point : LinkedPoint;
+			pivot = new ctor(pivot.x, pivot.y, this, 'setAnchor');
+		}
+		return pivot;
+	},
+
+	setPivot: function() {
+		this._pivot = Point.read(arguments);
+		delete this._position;
+	},
+
+	_pivot: null,
+
+	getRegistration: '#getAnchor',
+	setRegistration: '#setAnchor'
+}, Base.each(['getBounds', 'getStrokeBounds', 'getHandleBounds',
+		'getRoughBounds', 'getInternalBounds', 'getInternalRoughBounds'],
+	function(key) {
+		var match = key.match(/^getInternal(.*)$/),
+			internalGetter = match ? 'get' + match[1] : null;
+		this[key] = function() {
 			var getter = this._boundsGetter,
-				bounds = this._getCachedBounds(typeof getter == 'string'
-						? getter : getter && getter[name] || name, arguments[0]);
-			return name === 'getBounds'
+				bounds = this._getCachedBounds(!internalGetter
+						&& (typeof getter === 'string'
+							? getter : getter && getter[key])
+						|| key, arguments[0], null, internalGetter);
+			return key === 'getBounds'
 					? new LinkedRectangle(bounds.x, bounds.y, bounds.width,
 							bounds.height, this, 'setBounds') 
 					: bounds;
 		};
 	},
 {
-	_getCachedBounds: function(getter, matrix, cacheItem) {
-		var cache = (!matrix || matrix.equals(this._matrix)) && getter;
-		if (cacheItem && this._parent) {
-			var id = cacheItem._id,
-				ref = this._parent._boundsCache
-					= this._parent._boundsCache || {
-				ids: {},
-				list: []
-			};
-			if (!ref.ids[id]) {
-				ref.list.push(cacheItem);
-				ref.ids[id] = cacheItem;
-			}
-		}
-		if (cache && this._bounds && this._bounds[cache])
-			return this._bounds[cache].clone();
-		var identity = this._matrix.isIdentity();
-		matrix = !matrix || matrix.isIdentity()
-				? identity ? null : this._matrix
-				: identity ? matrix : matrix.clone().concatenate(this._matrix);
-		var bounds = this._getBounds(getter, matrix, cache ? this : cacheItem);
-		if (cache) {
-			if (!this._bounds)
-				this._bounds = {};
-			this._bounds[cache] = bounds.clone();
-		}
-		return bounds;
-	},
-
-	_clearBoundsCache: function() {
-		if (this._boundsCache) {
-			for (var i = 0, list = this._boundsCache.list, l = list.length;
-					i < l; i++) {
-				var item = list[i];
-				delete item._bounds;
-				if (item != this && item._boundsCache)
-					item._clearBoundsCache();
-			}
-			delete this._boundsCache;
-		}
-	},
-
 	_getBounds: function(getter, matrix, cacheItem) {
 		var children = this._children;
 		if (!children || children.length == 0)
@@ -3036,9 +3019,94 @@ var Item = Base.extend(Callback, {
 		center = bounds.getCenter();
 		matrix.translate(-center.x, -center.y);
 		this.transform(matrix);
+	},
+
+	_getCachedBounds: function(getter, matrix, cacheItem, internalGetter) {
+		matrix = matrix && matrix.orNullIfIdentity();
+		var _matrix = internalGetter ? null : this._matrix.orNullIfIdentity(),
+			cache = (!matrix || matrix.equals(_matrix)) && getter;
+		var cacheParent = this._parent || this._parentSymbol;
+		if (cacheItem && cacheParent) {
+			var id = cacheItem._id,
+				ref = cacheParent._boundsCache = cacheParent._boundsCache || {
+					ids: {},
+					list: []
+				};
+			if (!ref.ids[id]) {
+				ref.list.push(cacheItem);
+				ref.ids[id] = cacheItem;
+			}
+		}
+		if (cache && this._bounds && this._bounds[cache])
+			return this._bounds[cache].clone();
+		matrix = !matrix
+				? _matrix
+				: _matrix
+					? matrix.clone().concatenate(_matrix)
+					: matrix;
+		var bounds = this._getBounds(internalGetter || getter, matrix,
+				cache ? this : cacheItem);
+		if (cache) {
+			if (!this._bounds)
+				this._bounds = {};
+			var cached = this._bounds[cache] = bounds.clone();
+			cached._internal = !!internalGetter;
+		}
+		return bounds;
+	},
+
+	statics: {
+		_clearBoundsCache: function(item) {
+			if (item._boundsCache) {
+				for (var i = 0, list = item._boundsCache.list, l = list.length;
+						i < l; i++) {
+					var child = list[i];
+					delete child._bounds;
+					delete child._position;
+					if (child !== item && child._boundsCache)
+						child._clearBoundsCache();
+				}
+				delete item._boundsCache;
+			}
+		}
 	}
 
 }), {
+	_decompose: function() {
+		return this._decomposed = this._matrix.decompose();
+	},
+
+	getRotation: function() {
+		var decomposed = this._decomposed || this._decompose();
+		return decomposed && decomposed.rotation;
+	},
+
+	setRotation: function(rotation) {
+		var current = this.getRotation();
+		if (current != null && rotation != null) {
+			var decomposed = this._decomposed;
+			this.rotate(rotation - current);
+			decomposed.rotation = rotation;
+			this._decomposed = decomposed;
+		}
+	},
+
+	getScaling: function() {
+		var decomposed = this._decomposed || this._decompose();
+		return decomposed && decomposed.scaling;
+	},
+
+	setScaling: function() {
+		var current = this.getScaling();
+		if (current != null) {
+			var scaling = Point.read(arguments, 0, 0, { clone: true }),
+				decomposed = this._decomposed;
+			this.scale(scaling.x / current.x, scaling.y / current.y);
+			decomposed.scaling = scaling;
+			this._decomposed = decomposed;
+		}
+	},
+
 	getMatrix: function() {
 		return this._matrix;
 	},
@@ -3051,8 +3119,17 @@ var Item = Base.extend(Callback, {
 	},
 
 	getGlobalMatrix: function() {
-		return this._drawCount === this._project._drawCount
-				&& this._globalMatrix || null;
+		var matrix = this._globalMatrix,
+			updateVersion = this._project._updateVersion;
+		if (matrix && matrix._updateVersion !== updateVersion)
+			matrix = null;
+		if (!matrix) {
+			matrix = this._globalMatrix = this._matrix.clone();
+			if (this._parent)
+				matrix.preConcatenate(this._parent.getGlobalMatrix());
+			matrix._updateVersion = updateVersion;
+		}
+		return matrix;
 	},
 
 	getTransformContent: function() {
@@ -3069,20 +3146,25 @@ var Item = Base.extend(Callback, {
 		return this._project;
 	},
 
-	_setProject: function(project) {
-		if (this._project != project) {
-			var hasOnFrame = this.responds('frame');
-			if (hasOnFrame)
-				this._animateItem(false);
+	_setProject: function(project, installEvents) {
+		if (this._project !== project) {
+			if (this._project)
+				this._installEvents(false);
 			this._project = project;
-			if (hasOnFrame)
-				this._animateItem(true);
-			if (this._children) {
-				for (var i = 0, l = this._children.length; i < l; i++) {
-					this._children[i]._setProject(project);
-				}
-			}
+			var children = this._children;
+			for (var i = 0, l = children && children.length; i < l; i++)
+				children[i]._setProject(project);
+			installEvents = true;
 		}
+		if (installEvents)
+			this._installEvents(true);
+	},
+
+	_installEvents: function _installEvents(install) {
+		_installEvents.base.call(this, install);
+		var children = this._children;
+		for (var i = 0, l = children && children.length; i < l; i++)
+			children[i]._installEvents(install);
 	},
 
 	getLayer: function() {
@@ -3220,33 +3302,47 @@ var Item = Base.extend(Callback, {
 			}
 			return false;
 		}
-		return point.isInside(this._getBounds('getBounds'));
+		return point.isInside(this.getInternalBounds());
 	},
 
 	hitTest: function(point, options) {
 		point = Point.read(arguments);
 		options = HitResult.getOptions(Base.read(arguments));
-
 		if (this._locked || !this._visible || this._guide && !options.guides)
 			return null;
 
-		if (!this._children && !this.getRoughBounds()
-				.expand(2 * options.tolerance)._containsPoint(point))
-			return null;
-		point = this._matrix._inverseTransform(point);
+		var matrix = this._matrix,
+			parentTotalMatrix = options._totalMatrix,
+			view = this._project.view,
+			totalMatrix = options._totalMatrix = parentTotalMatrix
+					? parentTotalMatrix.clone().concatenate(matrix)
+					: this.getGlobalMatrix().clone().preConcatenate(
+						view ? view._matrix : new Matrix()),
+			tolerancePadding = options._tolerancePadding = new Size(
+						Path._getPenPadding(1, totalMatrix.inverted())
+					).multiply(
+						Math.max(options.tolerance, 0.00001)
+					);
+		point = matrix._inverseTransform(point);
 
-		var that = this,
+		if (!this._children && !this.getInternalRoughBounds()
+				.expand(tolerancePadding.multiply(2))._containsPoint(point))
+			return null;
+		var checkSelf = !(options.guides && !this._guide
+				|| options.selected && !this._selected
+				|| options.type && this._type !== options.type),
+			that = this,
 			res;
+
 		function checkBounds(type, part) {
 			var pt = bounds['get' + part]();
-			if (point.getDistance(pt) < options.tolerance)
+			if (point.subtract(pt).divide(tolerancePadding).length <= 1)
 				return new HitResult(type, that,
 						{ name: Base.hyphenate(part), point: pt });
 		}
 
-		if ((options.center || options.bounds) &&
-				!(this instanceof Layer && !this._parent)) {
-			var bounds = this._getBounds('getBounds');
+		if (checkSelf && (options.center || options.bounds) && this._parent) {
+			var bounds = this.getInternalBounds();
 			if (options.center)
 				res = checkBounds('center', 'Center');
 			if (!res && options.bounds) {
@@ -3259,24 +3355,27 @@ var Item = Base.extend(Callback, {
 			}
 		}
 
-		if ((res || (res = this._children || !(options.guides && !this._guide
-				|| options.selected && !this._selected)
-					? this._hitTest(point, options) : null))
-				&& res.point) {
-			res.point = that._matrix.transform(res.point);
+		var children = !res && this._children;
+		if (children) {
+			var opts = this._getChildHitTestOptions(options);
+			for (var i = children.length - 1; i >= 0 && !res; i--)
+				res = children[i].hitTest(point, opts);
 		}
+		if (!res && checkSelf)
+			res = this._hitTest(point, options);
+		if (res && res.point)
+			res.point = matrix.transform(res.point);
+		options._totalMatrix = parentTotalMatrix;
 		return res;
 	},
 
+	_getChildHitTestOptions: function(options) {
+		return options;
+	},
+
 	_hitTest: function(point, options) {
-		var children = this._children;
-		if (children) {
-			for (var i = children.length - 1, res; i >= 0; i--)
-				if (res = children[i].hitTest(point, options))
-					return res;
-		} else if (options.fill && this.hasFill() && this._contains(point)) {
+		if (options.fill && this.hasFill() && this._contains(point))
 			return new HitResult('fill', this);
-		}
 	},
 
 	matches: function(match) {
@@ -3384,7 +3483,7 @@ var Item = Base.extend(Callback, {
 			for (var i = 0, l = items.length; i < l; i++) {
 				var item = items[i];
 				item._parent = this;
-				item._setProject(this._project);
+				item._setProject(this._project, true);
 				if (item._name)
 					item.setName(item._name);
 			}
@@ -3465,8 +3564,7 @@ var Item = Base.extend(Callback, {
 				this._removeNamed();
 			if (this._index != null)
 				Base.splice(this._parent._children, null, this._index, 1);
-			if (this.responds('frame'))
-				this._animateItem(false);
+			this._installEvents(false);
 			if (notify)
 				this._parent._changed(7);
 			this._parent = null;
@@ -3580,34 +3678,26 @@ var Item = Base.extend(Callback, {
 		return false;
 	},
 
-	scale: function(hor, ver , center) {
-		if (arguments.length < 2 || typeof ver === 'object') {
-			center = ver;
-			ver = hor;
-		}
-		return this.transform(new Matrix().scale(hor, ver,
-				center || this.getPosition(true)));
-	},
-
 	translate: function() {
 		var mx = new Matrix();
 		return this.transform(mx.translate.apply(mx, arguments));
 	},
 
-	rotate: function(angle, center) {
+	rotate: function(angle ) {
 		return this.transform(new Matrix().rotate(angle,
+				Point.read(arguments, 1, 0, { readNull: true })
+					|| this.getPosition(true)));
+	}
+}, Base.each(['scale', 'shear', 'skew'], function(name) {
+	this[name] = function() {
+		var point = Point.read(arguments),
+			center = Point.read(arguments, 0, 0, { readNull: true });
+		return this.transform(new Matrix()[name](point,
 				center || this.getPosition(true)));
-	},
+	};
+}, {
 
-	shear: function(hor, ver, center) {
-		if (arguments.length < 2 || typeof ver === 'object') {
-			center = ver;
-			ver = hor;
-		}
-		return this.transform(new Matrix().shear(hor, ver,
-				center || this.getPosition(true)));
-	},
-
+}), {
 	transform: function(matrix ) {
 		var bounds = this._bounds,
 			position = this._position;
@@ -3615,10 +3705,12 @@ var Item = Base.extend(Callback, {
 		if (this._transformContent || arguments[1])
 			this.applyMatrix(true);
 		this._changed(5);
-		if (bounds && matrix.getRotation() % 90 === 0) {
+		var decomp = bounds && matrix.decompose();
+		if (decomp && !decomp.shearing && decomp.rotation % 90 === 0) {
 			for (var key in bounds) {
 				var rect = bounds[key];
-				matrix._transformBounds(rect, rect);
+				if (this._transformContent || !rect._internal)
+					matrix._transformBounds(rect, rect);
 			}
 			var getter = this._boundsGetter,
 				rect = bounds[getter && getter.getBounds || getter || 'getBounds'];
@@ -3633,6 +3725,7 @@ var Item = Base.extend(Callback, {
 
 	_applyMatrix: function(matrix, applyMatrix) {
 		var children = this._children;
+
 		if (children && children.length > 0) {
 			for (var i = 0, l = children.length; i < l; i++)
 				children[i].transform(matrix, applyMatrix);
@@ -3643,9 +3736,12 @@ var Item = Base.extend(Callback, {
 	applyMatrix: function(_dontNotify) {
 		var matrix = this._matrix;
 		if (this._applyMatrix(matrix, true)) {
-			var style = this._style,
+			var pivot = this._pivot,
+				style = this._style,
 				fillColor = style.getFillColor(true),
 				strokeColor = style.getStrokeColor(true);
+			if (pivot)
+				pivot.transform(matrix);
 			if (fillColor)
 				fillColor.transform(matrix);
 			if (strokeColor)
@@ -3654,16 +3750,17 @@ var Item = Base.extend(Callback, {
 		}
 		if (!_dontNotify)
 			this._changed(5);
+		return this;
 	},
 
 	globalToLocal: function() {
 		var matrix = this.getGlobalMatrix();
-		return matrix && matrix._transformPoint(Point.read(arguments));
+		return matrix && matrix._inverseTransform(Point.read(arguments));
 	},
 
 	localToGlobal: function() {
 		var matrix = this.getGlobalMatrix();
-		return matrix && matrix._inverseTransform(Point.read(arguments));
+		return matrix && matrix._transformPoint(Point.read(arguments));
 	},
 
 	fitBounds: function(rectangle, fill) {
@@ -3731,13 +3828,21 @@ var Item = Base.extend(Callback, {
 	draw: function(ctx, param) {
 		if (!this._visible || this._opacity === 0)
 			return;
-		this._drawCount = this._project._drawCount;
+		var updateVersion = this._updateVersion = this._project._updateVersion;
 		var trackTransforms = param.trackTransforms,
-			transforms = param.transforms,
+			transforms = param.transforms = param.transforms || [new Matrix()],
+			matrix = this._matrix,
 			parentMatrix = transforms[transforms.length - 1],
-			globalMatrix = parentMatrix.clone().concatenate(this._matrix);
-		if (trackTransforms)
+			globalMatrix = parentMatrix.clone().concatenate(matrix);
+		if (!globalMatrix.isInvertible())
+			return;
+		if (trackTransforms) {
+			if (!transforms)
+				transforms = param.transforms = [];
 			transforms.push(this._globalMatrix = globalMatrix);
+			globalMatrix._updateVersion = updateVersion;
+		}
+
 		var blendMode = this._blendMode,
 			opacity = this._opacity,
 			normalBlend = blendMode === 'normal',
@@ -3764,7 +3869,7 @@ var Item = Base.extend(Callback, {
 		} else {
 			ctx.translate(-itemOffset.x, -itemOffset.y);
 		}
-		(direct ? this._matrix : globalMatrix).applyToContext(ctx);
+		(direct ? matrix : globalMatrix).applyToContext(ctx);
 		if (!direct && param.clipItem)
 			param.clipItem.draw(ctx, param.extend({ clip: true }));
 		this._draw(ctx, param);
@@ -3808,6 +3913,7 @@ var Item = Base.extend(Callback, {
 
 var Group = Item.extend({
 	_class: 'Group',
+	_selectChildren: true,
 	_serializeFields: {
 		children: []
 	},
@@ -3888,7 +3994,8 @@ var Layer = Group.extend({
 				this._project.activeLayer = this.getNextSibling()
 						|| this.getPreviousSibling();
 			Base.splice(this._project.layers, null, this._index, 1);
-			this._project._needsRedraw = true;
+			this._installEvents(false);
+			this._project._needsUpdate = true;
 			return true;
 		}
 		return false;
@@ -3917,7 +4024,7 @@ var Layer = Group.extend({
 			this._remove(true);
 			Base.splice(item._project.layers, [this],
 					item._index + (above ? 1 : 0), 0);
-			this._setProject(item._project);
+			this._setProject(item._project, true);
 			return this;
 		}
 		return _insert.base.call(this, above, item, _preserve);
@@ -3928,12 +4035,14 @@ var Shape = Item.extend({
 	_class: 'Shape',
 	_transformContent: false,
 	_boundsSelected: true,
+	_serializeFields: {
+		shape: null,
+		size: null,
+		radius: null
+	},
 
-	initialize: function Shape(shape, center, size, radius, props) {
-		this._shape = shape;
-		this._size = size;
-		this._radius = radius;
-		this._initialize(props, center);
+	initialize: function Shape(props) {
+		this._initialize(props);
 	},
 
 	_equals: function(item) {
@@ -3943,14 +4052,20 @@ var Shape = Item.extend({
 	},
 
 	clone: function(insert) {
-		return this._clone(new Shape(this._shape, this.getPosition(true),
-				this._size.clone(),
-				this._radius.clone ? this._radius.clone() : this._radius,
-				{ insert: false }), insert);
+		return this._clone(new Shape({
+			shape: this._shape,
+			size: this._size,
+			radius: this._radius,
+			insert: false
+		}), insert);
 	},
 
 	getShape: function() {
 		return this._shape;
+	},
+
+	setShape: function(shape) {
+		this._shape = shape;
 	},
 
 	getSize: function() {
@@ -3959,10 +4074,12 @@ var Shape = Item.extend({
 	},
 
 	setSize: function() {
-		var shape = this._shape,
-			size = Size.read(arguments);
-		if (!this._size.equals(size)) {
-			var width = size.width,
+		var size = Size.read(arguments);
+		if (!this._size) {
+			this._size = size.clone();
+		} else if (!this._size.equals(size)) {
+			var shape = this._shape,
+				width = size.width,
 				height = size.height;
 			if (shape === 'rectangle') {
 				var radius = Size.min(this._radius, size.divide(2));
@@ -3995,14 +4112,18 @@ var Shape = Item.extend({
 			this._size.set(size, size);
 		} else {
 			radius = Size.read(arguments);
-			if (this._radius.equals(radius))
-				return;
-			this._radius.set(radius.width, radius.height);
-			if (shape === 'rectangle') {
-				var size = Size.max(this._size, radius.multiply(2));
-				this._size.set(size.width, size.height);
-			} else if (shape === 'ellipse') {
-				this._size.set(radius.width * 2, radius.height * 2);
+			if (!this._radius) {
+				this._radius = radius.clone();
+			} else {
+				if (this._radius.equals(radius))
+					return;
+				this._radius.set(radius.width, radius.height);
+				if (shape === 'rectangle') {
+					var size = Size.max(this._size, radius.multiply(2));
+					this._size.set(size.width, size.height);
+				} else if (shape === 'ellipse') {
+					this._size.set(radius.width * 2, radius.height * 2);
+				}
 			}
 		}
 		this._changed(5);
@@ -4170,7 +4291,11 @@ new function() {
 
 statics: new function() {
 	function createShape(shape, point, size, radius, args) {
-		return new Shape(shape, point, size, radius, Base.getNamed(args));
+		var item = new Shape(Base.getNamed(args));
+		item._shape = shape;
+		item._size = size;
+		item._radius = radius;
+		return item.translate(point);
 	}
 
 	return {
@@ -4346,25 +4471,25 @@ var Raster = Item.extend({
 
 	setSource: function(src) {
 		var that = this,
-			image = document.getElementById(src) || new Image();
+			image;
 
 		function loaded() {
 			var view = that._project.view;
 			if (view)
 				paper = view._scope;
+			that.setImage(image);
 			that.fire('load');
 			if (view)
-				view.draw(true);
+				view.update();
 		}
+
+			image = document.getElementById(src) || new Image();
 
 		if (image.naturalWidth && image.naturalHeight) {
 			setTimeout(loaded, 0);
 		} else {
 			DomEvent.add(image, {
-				load: function() {
-					that.setImage(image);
-					loaded();
-				}
+				load: loaded
 			});
 			if (!image.src)
 				image.src = src;
@@ -4556,10 +4681,8 @@ var PlacedSymbol = Item.extend({
 	},
 
 	setSymbol: function(symbol) {
-		if (this._symbol)
-			delete this._symbol._instances[this._id];
 		this._symbol = symbol;
-		symbol._instances[this._id] = this;
+		this._changed(5);
 	},
 
 	clone: function(insert) {
@@ -4573,15 +4696,16 @@ var PlacedSymbol = Item.extend({
 		return this._symbol._definition.isEmpty();
 	},
 
-	_getBounds: function(getter, matrix) {
-		return this.symbol._definition._getCachedBounds(getter, matrix);
+	_getBounds: function(getter, matrix, cacheItem) {
+		return this.symbol._definition._getCachedBounds(getter, matrix,
+				cacheItem);
 	},
 
 	_hitTest: function(point, options, matrix) {
-		var result = this._symbol._definition._hitTest(point, options, matrix);
-		if (result)
-			result.item = this;
-		return result;
+		var res = this._symbol._definition._hitTest(point, options, matrix);
+		if (res)
+			res.item = this;
+		return res;
 	},
 
 	_draw: function(ctx, param) {
@@ -4746,58 +4870,39 @@ var Segment = Base.extend({
 		return false;
 	},
 
-	_isSelected: function(point) {
-		var state = this._selectionState;
-		return point == this._point ? !!(state & 4)
-			: point == this._handleIn ? !!(state & 1)
-			: point == this._handleOut ? !!(state & 2)
+	_selectionState: 0,
+
+	isSelected: function() {
+		var point = arguments[0], 
+			state = this._selectionState;
+		return !point ? !!(state & 7)
+			: point === this._point ? !!(state & 4)
+			: point === this._handleIn ? !!(state & 1)
+			: point === this._handleOut ? !!(state & 2)
 			: false;
 	},
 
-	_setSelected: function(point, selected) {
-		var path = this._path,
+	setSelected: function(selected ) {
+		var point = arguments[1]; 
+			path = this._path,
 			selected = !!selected, 
-			state = this._selectionState || 0,
-			selection = [
-				!!(state & 4),
-				!!(state & 1),
-				!!(state & 2)
-			];
-		if (point === this._point) {
-			if (selected) {
-				selection[1] = selection[2] = false;
-			} else {
-				var previous = this.getPrevious(),
-					next = this.getNext();
-				selection[1] = previous && (previous._point.isSelected()
-						|| previous._handleOut.isSelected());
-				selection[2] = next && (next._point.isSelected()
-						|| next._handleIn.isSelected());
-			}
-			selection[0] = selected;
+			state = this._selectionState,
+			oldState = state,
+			flag = !point ? 7
+					: point === this._point ? 4
+					: point === this._handleIn ? 1
+					: point === this._handleOut ? 2
+					: 0;
+		if (selected) {
+			state |= flag;
 		} else {
-			var index = point === this._handleIn ? 1 : 2;
-			if (selection[index] != selected) {
-				if (selected)
-					selection[0] = false;
-				selection[index] = selected;
-			}
+			state &= ~flag;
 		}
-		this._selectionState = (selection[0] ? 4 : 0)
-				| (selection[1] ? 1 : 0)
-				| (selection[2] ? 2 : 0);
-		if (path && state != this._selectionState) {
-			path._updateSelection(this, state, this._selectionState);
+		this._selectionState = state;
+		if (path && state !== oldState) {
+			path._updateSelection(this, oldState, state);
 			path._changed(33);
 		}
-	},
-
-	isSelected: function() {
-		return this._isSelected(this._point);
-	},
-
-	setSelected: function(selected) {
-		this._setSelected(this._point, selected);
 	},
 
 	getIndex: function() {
@@ -4977,11 +5082,11 @@ var SegmentPoint = Point.extend({
 	},
 
 	setSelected: function(selected) {
-		this._owner._setSelected(this, selected);
+		this._owner.setSelected(selected, this);
 	},
 
 	isSelected: function() {
-		return this._owner._isSelected(this);
+		return this._owner.isSelected(this);
 	}
 });
 
@@ -5090,16 +5195,21 @@ var Curve = Base.extend({
 	},
 
 	isSelected: function() {
-		return this.getHandle1().isSelected() && this.getHandle2().isSelected();
+		return this.getPoint1().isSelected()
+				&& this.getHandle2().isSelected()
+				&& this.getHandle2().isSelected()
+				&& this.getPoint2().isSelected();
 	},
 
 	setSelected: function(selected) {
+		this.getPoint1().setSelected(selected);
 		this.getHandle1().setSelected(selected);
 		this.getHandle2().setSelected(selected);
+		this.getPoint2().setSelected(selected);
 	},
 
-	getValues: function() {
-		return Curve.getValues(this._segment1, this._segment2);
+	getValues: function(matrix) {
+		return Curve.getValues(this._segment1, this._segment2, matrix);
 	},
 
 	getPoints: function() {
@@ -5214,17 +5324,20 @@ var Curve = Base.extend({
 	},
 
 statics: {
-	getValues: function(segment1, segment2) {
+	getValues: function(segment1, segment2, matrix) {
 		var p1 = segment1._point,
 			h1 = segment1._handleOut,
 			h2 = segment2._handleIn,
-			p2 = segment2._point;
-		return [
-			p1._x, p1._y,
-			p1._x + h1._x, p1._y + h1._y,
-			p2._x + h2._x, p2._y + h2._y,
-			p2._x, p2._y
-		];
+			p2 = segment2._point,
+			values = [
+				p1._x, p1._y,
+				p1._x + h1._x, p1._y + h1._y,
+				p2._x + h2._x, p2._y + h2._y,
+				p2._x, p2._y
+			];
+		if (matrix)
+			matrix._transformCoordinates(values, 0, values, 0, 6);
+		return values;
 	},
 
 	evaluate: function(v, t, type) {
@@ -5300,11 +5413,10 @@ statics: {
 	},
 
 	getParameterOf: function(v, x, y) {
-		if (Math.abs(v[0] - x) < 0.00001
-				&& Math.abs(v[1] - y) < 0.00001)
+		var tolerance = 0.00001;
+		if (Math.abs(v[0] - x) < tolerance && Math.abs(v[1] - y) < tolerance)
 			return 0;
-		if (Math.abs(v[6] - x) < 0.00001
-				&& Math.abs(v[7] - y) < 0.00001)
+		if (Math.abs(v[6] - x) < tolerance && Math.abs(v[7] - y) < tolerance)
 			return 1;
 		var txs = [],
 			tys = [],
@@ -5317,7 +5429,7 @@ statics: {
 					if (sy == -1 || (ty = tys[cy++]) >= 0 && ty <= 1) {
 						if (sx == -1) tx = ty;
 						else if (sy == -1) ty = tx;
-						if (Math.abs(tx - ty) < 0.00001)
+						if (Math.abs(tx - ty) < tolerance)
 							return (tx + ty) * 0.5;
 					}
 				}
@@ -5539,7 +5651,6 @@ statics: {
 		point = Point.read(arguments);
 		var values = this.getValues(),
 			count = 100,
-			tolerance = Numerical.TOLERANCE,
 			minDist = Infinity,
 			minT = 0;
 
@@ -5559,7 +5670,7 @@ statics: {
 			refine(i / count);
 
 		var step = 1 / (count * 2);
-		while (step > tolerance) {
+		while (step > 0.00001) {
 			if (!refine(minT - step) && !refine(minT + step))
 				step /= 2;
 		}
@@ -5610,11 +5721,12 @@ new function() {
 			if (b === undefined)
 				b = 1;
 			var isZero = Numerical.isZero;
-			if (isZero(v[0] - v[2]) && isZero(v[1] - v[3])
+			if (a === 0 && b === 1
+					&& isZero(v[0] - v[2]) && isZero(v[1] - v[3])
 					&& isZero(v[6] - v[4]) && isZero(v[7] - v[5])) {
 				var dx = v[6] - v[0], 
 					dy = v[7] - v[1]; 
-				return (b - a) * Math.sqrt(dx * dx + dy * dy);
+				return Math.sqrt(dx * dx + dy * dy);
 			}
 			var ds = getLengthIntegrand(v);
 			return Numerical.integrate(ds, a, b, getIterations(a, b));
@@ -5650,144 +5762,83 @@ new function() {
 }, new function() { 
 	function addLocation(locations, curve1, t1, point1, curve2, t2, point2) {
 		var first = locations[0],
-			last = locations[locations.length - 1];
-		if ((!first || !point1.isClose(first._point, Numerical.EPSILON))
-				&& (!last || !point1.isClose(last._point, Numerical.EPSILON)))
+			last = locations[locations.length - 1],
+			epsilon = 1e-11;
+		if ((!first || !point1.isClose(first._point, epsilon))
+				&& (!last || !point1.isClose(last._point, epsilon)))
 			locations.push(
 					new CurveLocation(curve1, t1, point1, curve2, t2, point2));
 	}
 
 	function addCurveIntersections(v1, v2, curve1, curve2, locations,
-			range1, range2, recursion) {
-		recursion = (recursion || 0) + 1;
+			tMin, tMax, uMin, uMax, oldTDiff, reverse, recursion) {
 		if (recursion > 20)
 			return;
-		range1 = range1 || [ 0, 1 ];
-		range2 = range2 || [ 0, 1 ];
-		var part1 = Curve.getPart(v1, range1[0], range1[1]),
-			part2 = Curve.getPart(v2, range2[0], range2[1]),
-			iteration = 0;
-		while (iteration++ < 20) {
-			var range,
-				intersects1 = clipFatLine(part1, part2, range = range2.slice()),
-				intersects2 = 0;
-			if (intersects1 === 0)
-				break;
-			if (intersects1 > 0) {
-				range2 = range;
-				part2 = Curve.getPart(v2, range2[0], range2[1]);
-				intersects2 = clipFatLine(part2, part1, range = range1.slice());
-				if (intersects2 === 0)
-					break;
-				if (intersects1 > 0) {
-					range1 = range;
-					part1 = Curve.getPart(v1, range1[0], range1[1]);
-				}
+		var q0x = v2[0], q0y = v2[1], q3x = v2[6], q3y = v2[7],
+			tolerance = 0.00001,
+			getSignedDistance = Line.getSignedDistance,
+			d1 = getSignedDistance(q0x, q0y, q3x, q3y, v2[2], v2[3]) || 0,
+			d2 = getSignedDistance(q0x, q0y, q3x, q3y, v2[4], v2[5]) || 0,
+			factor = d1 * d2 > 0 ? 3 / 4 : 4 / 9,
+			dMin = factor * Math.min(0, d1, d2),
+			dMax = factor * Math.max(0, d1, d2),
+			dp0 = getSignedDistance(q0x, q0y, q3x, q3y, v1[0], v1[1]),
+			dp1 = getSignedDistance(q0x, q0y, q3x, q3y, v1[2], v1[3]),
+			dp2 = getSignedDistance(q0x, q0y, q3x, q3y, v1[4], v1[5]),
+			dp3 = getSignedDistance(q0x, q0y, q3x, q3y, v1[6], v1[7]),
+			tMinNew, tMaxNew, tDiff;
+		if (q0x === q3x && uMax - uMin <= Numerical.EPSILON && recursion > 3) {
+			tMinNew = (tMax + tMin) / 2;
+			tMaxNew = tMinNew;
+			tDiff = 0;
+		} else {
+			var hull = getConvexHull(dp0, dp1, dp2, dp3),
+				top = hull[0],
+				bottom = hull[1],
+				tMinClip, tMaxClip;
+			tMinClip = clipConvexHull(top, bottom, dMin, dMax);
+			top.reverse();
+			bottom.reverse();
+			tMaxClip = clipConvexHull(top, bottom, dMin, dMax);
+			if (tMinClip == null || tMaxClip == null)
+				return false;
+			v1 = Curve.getPart(v1, tMinClip, tMaxClip);
+			tDiff = tMaxClip - tMinClip;
+			tMinNew = tMax * tMinClip + tMin * (1 - tMinClip);
+			tMaxNew = tMax * tMaxClip + tMin * (1 - tMaxClip);
+		}
+		if (oldTDiff > 0.8 && tDiff > 0.8) {
+			if (tMaxNew - tMinNew > uMax - uMin) {
+				var parts = Curve.subdivide(v1, 0.5),
+					t = tMinNew + (tMaxNew - tMinNew) / 2;
+				addCurveIntersections(v2, parts[0], curve2, curve1, locations,
+					uMin, uMax, tMinNew, t, tDiff, !reverse, ++recursion);
+				addCurveIntersections(v2, parts[1], curve2, curve1, locations,
+					uMin, uMax, t, tMaxNew, tDiff, !reverse, recursion);
+			} else {
+				var parts = Curve.subdivide(v2, 0.5),
+					t = uMin + (uMax - uMin) / 2;
+				addCurveIntersections(parts[0], v1, curve2, curve1, locations,
+					uMin, t, tMinNew, tMaxNew, tDiff, !reverse, ++recursion);
+				addCurveIntersections(parts[1], v1, curve2, curve1, locations,
+					t, uMax, tMinNew, tMaxNew, tDiff, !reverse, recursion);
 			}
-			if (intersects1 < 0 || intersects2 < 0) {
-				if (range1[1] - range1[0] > range2[1] - range2[0]) {
-					var t = (range1[0] + range1[1]) / 2;
-					addCurveIntersections(v1, v2, curve1, curve2, locations,
-							[ range1[0], t ], range2, recursion);
-					addCurveIntersections(v1, v2, curve1, curve2, locations,
-							[ t, range1[1] ], range2, recursion);
-					break;
-				} else {
-					var t = (range2[0] + range2[1]) / 2;
-					addCurveIntersections(v1, v2, curve1, curve2, locations,
-							range1, [ range2[0], t ], recursion);
-					addCurveIntersections(v1, v2, curve1, curve2, locations,
-							range1, [ t, range2[1] ], recursion);
-					break;
-				}
-			}
-			if (Math.abs(range1[1] - range1[0]) <= 0.00001 &&
-				Math.abs(range2[1] - range2[0]) <= 0.00001) {
-				var t1 = (range1[0] + range1[1]) / 2,
-					t2 = (range2[0] + range2[1]) / 2;
+		} else if (Math.max(uMax - uMin, tMaxNew - tMinNew) < tolerance) {
+			var t1 = tMinNew + (tMaxNew - tMinNew) / 2,
+				t2 = uMin + (uMax - uMin) / 2;
+			if (reverse) {
+				addLocation(locations,
+						curve2, t2, Curve.evaluate(v2, t2, 0),
+						curve1, t1, Curve.evaluate(v1, t1, 0));
+			} else {
 				addLocation(locations,
 						curve1, t1, Curve.evaluate(v1, t1, 0),
 						curve2, t2, Curve.evaluate(v2, t2, 0));
-				break;
 			}
+		} else { 
+			addCurveIntersections(v2, v1, curve2, curve1, locations,
+					uMin, uMax, tMinNew, tMaxNew, tDiff, !reverse, ++recursion);
 		}
-	}
-
-	function clipFatLine(v1, v2, range2) {
-		var p0x = v1[0], p0y = v1[1], p1x = v1[2], p1y = v1[3],
-			p2x = v1[4], p2y = v1[5], p3x = v1[6], p3y = v1[7],
-			q0x = v2[0], q0y = v2[1], q1x = v2[2], q1y = v2[3],
-			q2x = v2[4], q2y = v2[5], q3x = v2[6], q3y = v2[7],
-			getSignedDistance = Line.getSignedDistance,
-			d1 = getSignedDistance(p0x, p0y, p3x, p3y, p1x, p1y) || 0,
-			d2 = getSignedDistance(p0x, p0y, p3x, p3y, p2x, p2y) || 0,
-			factor = d1 * d2 > 0 ? 3 / 4 : 4 / 9,
-			dmin = factor * Math.min(0, d1, d2),
-			dmax = factor * Math.max(0, d1, d2),
-			dq0 = getSignedDistance(p0x, p0y, p3x, p3y, q0x, q0y),
-			dq1 = getSignedDistance(p0x, p0y, p3x, p3y, q1x, q1y),
-			dq2 = getSignedDistance(p0x, p0y, p3x, p3y, q2x, q2y),
-			dq3 = getSignedDistance(p0x, p0y, p3x, p3y, q3x, q3y);
-		if (dmin > Math.max(dq0, dq1, dq2, dq3)
-				|| dmax < Math.min(dq0, dq1, dq2, dq3))
-			return 0;
-		var hull = getConvexHull(dq0, dq1, dq2, dq3),
-			swap;
-		if (dq3 < dq0) {
-			swap = dmin;
-			dmin = dmax;
-			dmax = swap;
-		}
-		var tmaxdmin = -Infinity,
-			tmin = Infinity,
-			tmax = -Infinity;
-		for (var i = 0, l = hull.length; i < l; i++) {
-			var p1 = hull[i],
-				p2 = hull[(i + 1) % l];
-			if (p2[1] < p1[1]) {
-				swap = p2;
-				p2 = p1;
-				p1 = swap;
-			}
-			var	x1 = p1[0],
-				y1 = p1[1],
-				x2 = p2[0],
-				y2 = p2[1];
-			var inv = (y2 - y1) / (x2 - x1);
-			if (dmin >= y1 && dmin <= y2) {
-				var ixdx = x1 + (dmin - y1) / inv;
-				if (ixdx < tmin)
-					tmin = ixdx;
-				if (ixdx > tmaxdmin)
-					tmaxdmin = ixdx;
-			}
-			if (dmax >= y1 && dmax <= y2) {
-				var ixdx = x1 + (dmax - y1) / inv;
-				if (ixdx > tmax)
-					tmax = ixdx;
-				if (ixdx < tmin)
-					tmin = 0;
-			}
-		}
-		if (tmin !== Infinity && tmax !== -Infinity) {
-			var min = Math.min(dmin, dmax),
-				max = Math.max(dmin, dmax);
-			if (dq3 > min && dq3 < max)
-				tmax = 1;
-			if (dq0 > min && dq0 < max)
-				tmin = 0;
-			if (tmaxdmin > tmax)
-				tmax = 1;
-			var v2tmin = range2[0],
-				tdiff = range2[1] - v2tmin;
-			range2[0] = v2tmin + tmin * tdiff;
-			range2[1] = v2tmin + tmax * tdiff;
-			if ((tdiff - (range2[1] - range2[0])) / tdiff >= 0.2)
-				return 1;
-		}
-		if (Curve.getBounds(v1).touches(Curve.getBounds(v2)))
-			return -1;
-		return 0;
 	}
 
 	function getConvexHull(dq0, dq1, dq2, dq3) {
@@ -5797,23 +5848,70 @@ new function() {
 			p3 = [ 1, dq3 ],
 			getSignedDistance = Line.getSignedDistance,
 			dist1 = getSignedDistance(0, dq0, 1, dq3, 1 / 3, dq1),
-			dist2 = getSignedDistance(0, dq0, 1, dq3, 2 / 3, dq2);
+			dist2 = getSignedDistance(0, dq0, 1, dq3, 2 / 3, dq2),
+			flip = false,
+			hull;
 		if (dist1 * dist2 < 0) {
-			return [ p0, p1, p3, p2 ];
-		}
-		var pmax, cross;
-		if (Math.abs(dist1) > Math.abs(dist2)) {
-			pmax = p1;
-			cross = (dq3 - dq2 - (dq3 - dq0) / 3)
-					* (2 * (dq3 - dq2) - dq3 + dq1) / 3;
+			hull = [[p0, p1, p3], [p0, p2, p3]];
+			flip = dist1 < 0;
 		} else {
-			pmax = p2;
-			cross = (dq1 - dq0 + (dq0 - dq3) / 3)
-					* (-2 * (dq0 - dq1) + dq0 - dq2) / 3;
+			var pmax, cross = 0,
+				distZero = dist1 === 0 || dist2 === 0;
+			if (Math.abs(dist1) > Math.abs(dist2)) {
+				pmax = p1;
+				cross = (dq3 - dq2 - (dq3 - dq0) / 3)
+						* (2 * (dq3 - dq2) - dq3 + dq1) / 3;
+			} else {
+				pmax = p2;
+				cross = (dq1 - dq0 + (dq0 - dq3) / 3)
+						* (-2 * (dq0 - dq1) + dq0 - dq2) / 3;
+			}
+			hull = cross < 0 || distZero
+					? [[p0, pmax, p3], [p0, p3]]
+					: [[p0, p1, p2, p3], [p0, p3]];
+			flip = dist1 ? dist1 < 0 : dist2 < 0;
 		}
-		return cross < 0
-				? [ p0, pmax, p3 ]
-				: [ p0, p1, p2, p3 ];
+		return flip ? hull.reverse() : hull;
+	}
+
+	function clipConvexHull(hullTop, hullBottom, dMin, dMax) {
+		var tProxy,
+			tVal = null,
+			px, py,
+			qx, qy;
+		for (var i = 0, l = hullBottom.length - 1; i < l; i++) {
+			py = hullBottom[i][1];
+			qy = hullBottom[i + 1][1];
+			if (py < qy) {
+				tProxy = null;
+			} else if (qy <= dMax) {
+				px = hullBottom[i][0];
+				qx = hullBottom[i + 1][0];
+				tProxy = px + (dMax  - py) * (qx - px) / (qy - py);
+			} else {
+				continue;
+			}
+			break;
+		}
+		if (hullTop[0][1] <= dMax)
+			tProxy = hullTop[0][0];
+		for (var i = 0, l = hullTop.length - 1; i < l; i++) {
+			py = hullTop[i][1];
+			qy = hullTop[i + 1][1];
+			if (py >= dMin) {
+				tVal = tProxy;
+			} else if (py > qy) {
+				tVal = null;
+			} else if (qy >= dMin) {
+				px = hullTop[i][0];
+				qx = hullTop[i + 1][0];
+				tVal = px + (dMin  - py) * (qx - px) / (qy - py);
+			} else {
+				continue;
+			}
+			break;
+		}
+		return tVal;
 	}
 
 	function addCurveLineIntersections(v1, v2, curve1, curve2, locations) {
@@ -5864,25 +5962,13 @@ new function() {
 	return { statics: {
 		getIntersections: function(v1, v2, curve1, curve2, locations) {
 			var linear1 = Curve.isLinear(v1),
-				linear2 = Curve.isLinear(v2),
-				c1p1 = curve1.getPoint1(),
-				c1p2 = curve1.getPoint2(),
-				c2p1 = curve2.getPoint1(),
-				c2p2 = curve2.getPoint2(),
-				tolerance = 0.00001;
-			if (c1p1.isClose(c2p1, tolerance))
-				addLocation(locations, curve1, 0, c1p1, curve2, 0, c1p1);
-			if (c1p1.isClose(c2p2, tolerance))
-				addLocation(locations, curve1, 0, c1p1, curve2, 1, c1p1);
+				linear2 = Curve.isLinear(v2);
 			(linear1 && linear2
 				? addLineIntersection
 				: linear1 || linear2
 					? addCurveLineIntersections
-					: addCurveIntersections)(v1, v2, curve1, curve2, locations);
-			if (c1p2.isClose(c2p1, tolerance))
-				addLocation(locations, curve1, 1, c1p2, curve2, 0, c1p2);
-			if (c1p2.isClose(c2p2, tolerance))
-				addLocation(locations, curve1, 1, c1p2, curve2, 1, c1p2);
+					: addCurveIntersections)(v1, v2, curve1, curve2, locations,
+						0, 1, 0, 1, 1, false, 0);
 			return locations;
 		}
 	}};
@@ -6031,22 +6117,35 @@ var PathItem = Item.extend({
 	initialize: function PathItem() {
 	},
 
-	getIntersections: function(path) {
+	getIntersections: function(path, sorted) {
 		if (!this.getBounds().touches(path.getBounds()))
 			return [];
 		var locations = [],
 			curves1 = this.getCurves(),
 			curves2 = path.getCurves(),
+			matrix1 = this._matrix.orNullIfIdentity(),
+			matrix2 = path._matrix.orNullIfIdentity(),
+			length1 = curves1.length,
 			length2 = curves2.length,
 			values2 = [];
 		for (var i = 0; i < length2; i++)
-			values2[i] = curves2[i].getValues();
-		for (var i = 0, l = curves1.length; i < l; i++) {
+			values2[i] = curves2[i].getValues(matrix2);
+		for (var i = 0; i < length1; i++) {
 			var curve1 = curves1[i],
-				values1 = curve1.getValues();
+				values1 = curve1.getValues(matrix1);
 			for (var j = 0; j < length2; j++)
 				Curve.getIntersections(values1, values2[j], curve1, curves2[j],
 						locations);
+		}
+		if (sorted || sorted === undefined) {
+			locations.sort(function(loc1, loc2) {
+				var path1 = loc1.getPath(),
+					path2 = loc2.getPath();
+				return path1 === path2
+						? (loc1.getIndex() + loc1.getParameter())
+							- (loc2.getIndex() + loc2.getParameter())
+						: path1._index - path2._index;
+			});
 		}
 		return locations;
 	},
@@ -6165,11 +6264,15 @@ var Path = PathItem.extend({
 			? typeof arg[0] === 'object'
 				? arg
 				: arguments
-			: arg && (arg.point !== undefined && arg.size === undefined
-					|| arg.x !== undefined)
+			: arg && (arg.size === undefined && (arg.x !== undefined
+					|| arg.point !== undefined))
 				? arguments
 				: null;
 		this.setSegments(segments || []);
+		if (!segments && typeof arg === 'string') {
+			this.setPathData(arg);
+			arg = null;
+		}
 		this._initialize(!segments && arg);
 	},
 
@@ -6191,6 +6294,7 @@ var Path = PathItem.extend({
 	_changed: function _changed(flags) {
 		_changed.base.call(this, flags);
 		if (flags & 4) {
+			delete (this._compound ? this._parent : this)._currentPath;
 			delete this._length;
 			delete this._clockwise;
 			if (this._curves) {
@@ -6200,6 +6304,11 @@ var Path = PathItem.extend({
 		} else if (flags & 8) {
 			delete this._bounds;
 		}
+	},
+
+	getStyle: function() {
+		var parent = this._parent;
+		return (parent instanceof CompoundPath ? parent : this)._style;
 	},
 
 	getSegments: function() {
@@ -6448,7 +6557,7 @@ var Path = PathItem.extend({
 	isFullySelected: function() {
 		var length = this._segments.length;
 		return this._selected && length > 0 && this._selectedSegmentState
-				=== length * 4;
+				=== length * 7;
 	},
 
 	setFullySelected: function(selected) {
@@ -6466,10 +6575,10 @@ var Path = PathItem.extend({
 	_selectSegments: function(selected) {
 		var length = this._segments.length;
 		this._selectedSegmentState = selected
-				? length * 4 : 0;
+				? length * 7 : 0;
 		for (var i = 0; i < length; i++)
 			this._segments[i]._selectionState = selected
-					? 4 : 0;
+					? 7 : 0;
 	},
 
 	_updateSelection: function(segment, oldState, newState) {
@@ -6696,12 +6805,6 @@ var Path = PathItem.extend({
 		return this.getNearestLocation(point).getPoint();
 	},
 
-	getStyle: function() {
-		var parent = this._parent;
-		return (parent && parent._type === 'compound-path'
-				? parent : this)._style;
-	},
-
 	toShape: function(insert) {
 		if (!this._closed)
 			return null;
@@ -6772,7 +6875,7 @@ var Path = PathItem.extend({
 	_getWinding: function(point) {
 		var closed = this._closed;
 		if (!closed && !this.hasFill()
-				|| !this._getBounds('getRoughBounds')._containsPoint(point))
+				|| !this.getInternalRoughBounds()._containsPoint(point))
 			return 0;
 		var curves = this.getCurves(),
 			segments = this._segments,
@@ -6803,67 +6906,62 @@ var Path = PathItem.extend({
 	},
 
 	_hitTest: function(point, options) {
-		var style = this.getStyle(),
+		var that = this,
+			style = this.getStyle(),
 			segments = this._segments,
 			closed = this._closed,
-			tolerance = options.tolerance,
-			radius = 0, join, cap, miterLimit,
-			that = this,
-			area, loc, res;
-
-		if (options.stroke) {
-			radius = style.getStrokeWidth() / 2;
+			tolerancePadding = options._tolerancePadding,
+			strokePadding = tolerancePadding,
+			join, cap, miterLimit,
+			area, loc, res,
+			hasStroke = options.stroke && style.hasStroke(),
+			hasFill = options.fill && style.hasFill(),
+			radius = hasStroke ? style.getStrokeWidth() / 2
+					: hasFill ? 0 : null;
+		if (radius != null) {
 			if (radius > 0) {
 				join = style.getStrokeJoin();
 				cap = style.getStrokeCap();
 				miterLimit = radius * style.getMiterLimit();
+				strokePadding = tolerancePadding.add(new Point(radius, radius));
 			} else {
 				join = cap = 'round';
 			}
-			radius += tolerance;
 		}
 
-		function checkPoint(seg, pt, name) {
-			if (point.getDistance(pt) < tolerance)
-				return new HitResult(name, that, { segment: seg, point: pt });
+		function isCloseEnough(pt, padding) {
+			return point.subtract(pt).divide(padding).length <= 1;
+		}
+
+		function checkSegmentPoint(seg, pt, name) {
+			if (!options.selected || pt.isSelected()) {
+				var anchor = seg._point;
+				if (pt !== anchor)
+					pt = pt.add(anchor);
+				if (isCloseEnough(pt, strokePadding)) {
+					return new HitResult(name, that, {
+						segment: seg,
+						point: pt
+					});
+				}
+			}
 		}
 
 		function checkSegmentPoints(seg, ends) {
-			var pt = seg._point;
-			return (ends || options.segments) && checkPoint(seg, pt, 'segment')
+			return (ends || options.segments)
+				&& checkSegmentPoint(seg, seg._point, 'segment')
 				|| (!ends && options.handles) && (
-					checkPoint(seg, pt.add(seg._handleIn), 'handle-in') ||
-					checkPoint(seg, pt.add(seg._handleOut), 'handle-out'));
+					checkSegmentPoint(seg, seg._handleIn, 'handle-in') ||
+					checkSegmentPoint(seg, seg._handleOut, 'handle-out'));
 		}
 
 		function addAreaPoint(point) {
-			area.push(point);
-		}
-
-		function getAreaCurve(index) {
-			var p1 = area[index],
-				p2 = area[(index + 1) % area.length];
-			return [p1.x, p1.y, p1.x, p1.y, p2.x, p2.y, p2.x ,p2.y];
-		}
-
-		function isInArea(point) {
-			var length = area.length,
-				previous = getAreaCurve(length - 1),
-				roots1 = [],
-				roots2 = [],
-				winding = 0;
-			for (var i = 0; i < length; i++) {
-				var curve = getAreaCurve(i);
-				winding += Curve._getWinding(curve, previous, point.x, point.y,
-						roots1, roots2);
-				previous = curve;
-			}
-			return !!winding;
+			area.add(point);
 		}
 
 		function checkSegmentStroke(segment) {
 			if (join !== 'round' || cap !== 'round') {
-				area = [];
+				area = new Path({ internal: true, closed: true });
 				if (closed || segment._index > 0
 						&& segment._index < segments.length - 1) {
 					if (join !== 'round' && (segment._handleIn.isZero() 
@@ -6873,10 +6971,14 @@ var Path = PathItem.extend({
 				} else if (cap !== 'round') {
 					Path._addSquareCap(segment, cap, radius, addAreaPoint, true);
 				}
-				if (area.length > 0)
-					return isInArea(point);
+				if (!area.isEmpty()) {
+					var loc;
+					return area.contains(point)
+						|| (loc = area.getNearestLocation(point))
+							&& isCloseEnough(loc.getPoint(), tolerancePadding);
+				}
 			}
-			return point.getDistance(segment._point) <= radius;
+			return isCloseEnough(segment._point, strokePadding);
 		}
 
 		if (options.ends && !options.segments && !closed) {
@@ -6884,19 +6986,18 @@ var Path = PathItem.extend({
 					|| checkSegmentPoints(segments[segments.length - 1], true))
 				return res;
 		} else if (options.segments || options.handles) {
-			for (var i = 0, l = segments.length; i < l; i++) {
+			for (var i = 0, l = segments.length; i < l; i++)
 				if (res = checkSegmentPoints(segments[i]))
 					return res;
-			}
 		}
-		if (radius > 0) {
+		if (radius != null) {
 			loc = this.getNearestLocation(point);
 			if (loc) {
 				var parameter = loc.getParameter();
 				if (parameter === 0 || parameter === 1) {
 					if (!checkSegmentStroke(loc.getSegment()))
 						loc = null;
-				} else  if (loc._distance > radius) {
+				} else  if (!isCloseEnough(loc.getPoint(), strokePadding)) {
 					loc = null;
 				}
 			}
@@ -6911,10 +7012,13 @@ var Path = PathItem.extend({
 				}
 			}
 		}
-		return !loc && options.fill && this.hasFill() && this._contains(point)
+		return !loc && hasFill && this._contains(point) || loc && !hasStroke
 				? new HitResult('fill', this)
 				: loc
-					? new HitResult('stroke', this, { location: loc })
+					? new HitResult('stroke', this, {
+						location: loc,
+						point: loc.getPoint()
+					})
 					: null;
 	}
 
@@ -6942,18 +7046,17 @@ var Path = PathItem.extend({
 			var segment = segments[i];
 			segment._transformCoordinates(matrix, coords, false);
 			var state = segment._selectionState,
-				selected = state & 4,
 				pX = coords[0],
 				pY = coords[1];
-			if (selected || (state & 1))
+			if (state & 1)
 				drawHandle(2);
-			if (selected || (state & 2))
+			if (state & 2)
 				drawHandle(4);
 			ctx.save();
 			ctx.beginPath();
 			ctx.rect(pX - half, pY - half, size, size);
 			ctx.fill();
-			if (!selected) {
+			if (!(state & 4)) {
 				ctx.beginPath();
 				ctx.rect(pX - half + 1, pY - half + 1, size - 2, size - 2);
 				ctx.fillStyle = '#ffffff';
@@ -7016,14 +7119,14 @@ var Path = PathItem.extend({
 
 		for (var i = 0; i < length; i++)
 			drawSegment(i);
-		if (path._closed && length > 1)
+		if (path._closed && length > 0)
 			drawSegment(0);
 	}
 
 	return {
 		_draw: function(ctx, param) {
 			var clip = param.clip,
-				compound = param.compound;
+				compound = this._compound = param.compound;
 			if (!compound)
 				ctx.beginPath();
 
@@ -7038,10 +7141,15 @@ var Path = PathItem.extend({
 				return dashArray[((i % dashLength) + dashLength) % dashLength];
 			}
 
-			if (hasFill || hasStroke && !dashLength || compound || clip)
+			if (this._currentPath) {
+				ctx.currentPath = this._currentPath;
+			} else if (hasFill || hasStroke && !dashLength || compound || clip){
 				drawSegments(ctx, this);
-			if (this._closed)
-				ctx.closePath();
+				if (this._closed)
+					ctx.closePath();
+				if (!compound)
+					this._currentPath = ctx.currentPath;
+			}
 
 			if (!clip && !compound && (hasFill || hasStroke)) {
 				this._setStyles(ctx);
@@ -7390,29 +7498,11 @@ statics: {
 	},
 
 	getStrokeBounds: function(segments, closed, style, matrix) {
-		function getPenPadding(radius, matrix) {
-			if (!matrix)
-				return [radius, radius];
-			var mx = matrix.shiftless(),
-				hor = mx.transform(new Point(radius, 0)),
-				ver = mx.transform(new Point(0, radius)),
-				phi = hor.getAngleInRadians(),
-				a = hor.getLength(),
-				b = ver.getLength();
-			var sin = Math.sin(phi),
-				cos = Math.cos(phi),
-				tan = Math.tan(phi),
-				tx = -Math.atan(b * tan / a),
-				ty = Math.atan(b / (tan * a));
-			return [Math.abs(a * Math.cos(tx) * cos - b * Math.sin(tx) * sin),
-					Math.abs(b * Math.sin(ty) * cos + a * Math.cos(ty) * sin)];
-		}
-
 		if (!style.hasStroke())
 			return Path.getBounds(segments, closed, style, matrix);
 		var length = segments.length - (closed ? 0 : 1),
 			radius = style.getStrokeWidth() / 2,
-			padding = getPenPadding(radius, matrix),
+			padding = Path._getPenPadding(radius, matrix),
 			bounds = Path.getBounds(segments, closed, style, matrix, padding),
 			join = style.getStrokeJoin(),
 			cap = style.getStrokeCap(),
@@ -7435,14 +7525,10 @@ statics: {
 		}
 
 		function addCap(segment, cap) {
-			switch (cap) {
-			case 'round':
+			if (cap === 'round') {
 				addJoin(segment, cap);
-				break;
-			case 'butt':
-			case 'square':
+			} else {
 				Path._addSquareCap(segment, cap, radius, add); 
-				break;
 			}
 		}
 
@@ -7450,11 +7536,29 @@ statics: {
 			addJoin(segments[i], join);
 		if (closed) {
 			addJoin(segments[0], join);
-		} else {
+		} else if (length > 0) {
 			addCap(segments[0], cap);
 			addCap(segments[segments.length - 1], cap);
 		}
 		return bounds;
+	},
+
+	_getPenPadding: function(radius, matrix) {
+		if (!matrix)
+			return [radius, radius];
+		var mx = matrix.shiftless(),
+			hor = mx.transform(new Point(radius, 0)),
+			ver = mx.transform(new Point(0, radius)),
+			phi = hor.getAngleInRadians(),
+			a = hor.getLength(),
+			b = ver.getLength();
+		var sin = Math.sin(phi),
+			cos = Math.cos(phi),
+			tan = Math.tan(phi),
+			tx = -Math.atan(b * tan / a),
+			ty = Math.atan(b / (tan * a));
+		return [Math.abs(a * Math.cos(tx) * cos - b * Math.sin(tx) * sin),
+				Math.abs(b * Math.sin(ty) * cos + a * Math.cos(ty) * sin)];
 	},
 
 	_addSquareJoin: function(segment, join, radius, miterLimit, addPoint, area) {
@@ -7510,19 +7614,19 @@ statics: {
 			x2 = -x1,
 			y1 = x1,
 			y2 = x2;
-		strokePadding = strokePadding / 2 || 0;
-		joinPadding = joinPadding / 2 || 0;
 		for (var i = 0, l = segments.length; i < l; i++) {
 			var segment = segments[i];
 			segment._transformCoordinates(matrix, coords, false);
 			for (var j = 0; j < 6; j += 2) {
 				var padding = j == 0 ? joinPadding : strokePadding,
+					paddingX = padding ? padding[0] : 0,
+					paddingY = padding ? padding[1] : 0,
 					x = coords[j],
 					y = coords[j + 1],
-					xn = x - padding,
-					xx = x + padding,
-					yn = y - padding,
-					yx = y + padding;
+					xn = x - paddingX,
+					xx = x + paddingX,
+					yn = y - paddingY,
+					yx = y + paddingY;
 				if (xn < x1) x1 = xn;
 				if (xx > x2) x2 = xx;
 				if (yn < y1) y1 = yn;
@@ -7533,18 +7637,17 @@ statics: {
 	},
 
 	getRoughBounds: function(segments, closed, style, matrix) {
-		var strokeWidth = style.getStrokeColor() ? style.getStrokeWidth() : 0,
-			joinWidth = strokeWidth;
-		if (strokeWidth === 0) {
-			strokeWidth = 0.00001;
-		} else {
+		var strokeRadius = style.hasStroke() ? style.getStrokeWidth() / 2 : 0,
+			joinRadius = strokeRadius;
+		if (strokeRadius > 0) {
 			if (style.getStrokeJoin() === 'miter')
-				joinWidth = strokeWidth * style.getMiterLimit();
+				joinRadius = strokeRadius * style.getMiterLimit();
 			if (style.getStrokeCap() === 'square')
-				joinWidth = Math.max(joinWidth, strokeWidth * Math.sqrt(2));
+				joinRadius = Math.max(joinRadius, strokeRadius * Math.sqrt(2));
 		}
 		return Path.getHandleBounds(segments, closed, style, matrix,
-				strokeWidth, joinWidth);
+				Path._getPenPadding(strokeRadius, matrix),
+				Path._getPenPadding(joinRadius, matrix));
 	}
 }});
 
@@ -7692,8 +7795,19 @@ var CompoundPath = PathItem.extend({
 	initialize: function CompoundPath(arg) {
 		this._children = [];
 		this._namedChildren = {};
-		if (!this._initialize(arg))
-			this.addChildren(Array.isArray(arg) ? arg : arguments);
+		if (!this._initialize(arg)) {
+			if (typeof arg === 'string') {
+				this.setPathData(arg);
+			} else {
+				this.addChildren(Array.isArray(arg) ? arg : arguments);
+			}
+		}
+	},
+
+	_changed: function _changed(flags) {
+		_changed.base.call(this, flags);
+		if (flags & (2 | 4))
+			delete this._currentPath;
 	},
 
 	insertChildren: function insertChildren(index, items, _preserve) {
@@ -7779,20 +7893,10 @@ var CompoundPath = PathItem.extend({
 		return winding;
 	},
 
-	_hitTest : function _hitTest(point, options) {
-		var res = _hitTest.base.call(this, point,
-				new Base(options, { fill: false }));
-		if (!res) {
-			if (options.compoundChildren) {
-				var children =  this._children;
-				for (var i = children.length - 1; i >= 0 && !res; i--)
-					res = children[i]._hitTest(point, options);
-			} else if (options.fill && this.hasFill()
-					&& this._contains(point)) {
-				res = new HitResult('fill', this);
-			}
-		} 
-		return res;
+	_getChildHitTestOptions: function(options) {
+		return options.type === 'path'
+				? options
+				: new Base(options, { fill: false });
 	},
 
 	_draw: function(ctx, param) {
@@ -7800,10 +7904,15 @@ var CompoundPath = PathItem.extend({
 		if (children.length === 0)
 			return;
 
-		ctx.beginPath();
-		param = param.extend({ compound: true });
-		for (var i = 0, l = children.length; i < l; i++)
-			children[i].draw(ctx, param);
+		if (this._currentPath) {
+			ctx.currentPath = this._currentPath;
+		} else {
+			ctx.beginPath();
+			param = param.extend({ compound: true });
+			for (var i = 0, l = children.length; i < l; i++)
+				children[i].draw(ctx, param);
+			this._currentPath = ctx.currentPath;
+		}
 
 		if (!param.clip) {
 			this._setStyles(ctx);
@@ -8145,7 +8254,7 @@ PathItem.inject(new function() {
 			return path1 === path2
 					? (loc1.getIndex() + loc1.getParameter())
 						- (loc2.getIndex() + loc2.getParameter())
-					: path1._id - path2._id;
+					: path1._index - path2._index;
 		});
 		var others = collectOthers && [];
 		for (var i = intersections.length - 1; i >= 0; i--) {
@@ -8168,9 +8277,8 @@ PathItem.inject(new function() {
 				bounds = new Array(length),
 				counters = new Array(length),
 				clockwise;
-			children.sort(function(a, b){
-				var b1 = a.getBounds(), b2 = b.getBounds();
-				return b1._width * b1._height < b2._width * b2._height;
+			children.sort(function(a, b) {
+				return b.getBounds().getArea() - a.getBounds().getArea();
 			});
 			path.addChildren(children);
 			clockwise = children[0].isClockwise();
@@ -8191,8 +8299,8 @@ PathItem.inject(new function() {
 	}
 
 	function computeBoolean(path1, path2, operator, subtract) {
-		path1 = reorientPath(path1.clone(false));
-		path2 = reorientPath(path2.clone(false));
+		path1 = reorientPath(path1.clone(false).applyMatrix());
+		path2 = reorientPath(path2.clone(false).applyMatrix());
 		var path1Clockwise = path1.isClockwise(),
 			path2Clockwise = path2.isClockwise(),
 			intersections = path1.getIntersections(path2);
@@ -9167,8 +9275,10 @@ var Style = Base.extend(new function() {
 		shadowBlur: 0,
 		shadowOffset: new Point(),
 		selectedColor: undefined,
-		font: 'sans-serif',
+		fontFamily: 'sans-serif',
+		fontWeight: 'normal',
 		fontSize: 12,
+		font: 'sans-serif', 
 		leading: null,
 		justification: 'left'
 	};
@@ -9178,8 +9288,10 @@ var Style = Base.extend(new function() {
 		strokeCap: 25,
 		strokeJoin: 25,
 		miterLimit: 25,
-		font: 5,
+		fontFamily: 5,
+		fontWeight: 5,
 		fontSize: 5,
+		font: 5, 
 		leading: 5,
 		justification: 5
 	};
@@ -9228,7 +9340,7 @@ var Style = Base.extend(new function() {
 			var value,
 				children = this._item && this._item._children;
 			if (!children || children.length === 0 || arguments[0]
-					|| this._item._type === 'compound-path') {
+					|| this._item instanceof CompoundPath) {
 				var value = this._values[key];
 				if (value === undefined) {
 					value = this._defaults[key];
@@ -9309,14 +9421,20 @@ var Style = Base.extend(new function() {
 		return !!this.getShadowColor() && this.getShadowBlur() > 0;
 	},
 
+	getFontStyle: function() {
+		var size = this.getFontSize();
+		return this.getFontWeight()
+				+ ' ' + size + (/[a-z]/i.test(size + '') ? ' ' : 'px ')
+				+ this.getFontFamily();
+	},
+
+	getFont: '#getFontFamily',
+
+	setFont: '#setFontFamily',
+
 	getLeading: function getLeading() {
 		var leading = getLeading.base.call(this);
 		return leading != null ? leading : this.getFontSize() * 1.2;
-	},
-
-	getFontStyle: function() {
-		var size = this.getFontSize();
-		return size + (/[a-z]/i.test(size + '') ? ' ' : 'px ') + this.getFont();
 	}
 
 });
@@ -9501,27 +9619,13 @@ var DomElement = new function() {
 
 var DomEvent = {
 	add: function(el, events) {
-		for (var type in events) {
-			var func = events[type];
-			if (el.addEventListener) {
-				el.addEventListener(type, func, false);
-			} else if (el.attachEvent) {
-				el.attachEvent('on' + type, func.bound = function() {
-					func.call(el, window.event);
-				});
-			}
-		}
+		for (var type in events)
+			el.addEventListener(type, events[type], false);
 	},
 
 	remove: function(el, events) {
-		for (var type in events) {
-			var func = events[type];
-			if (el.removeEventListener) {
-				el.removeEventListener(type, func, false);
-			} else if (el.detachEvent) {
-				el.detachEvent('on' + type, func.bound);
-			}
-		}
+		for (var type in events)
+			el.removeEventListener(type, events[type], false);
 	},
 
 	getPoint: function(event) {
@@ -9540,30 +9644,18 @@ var DomEvent = {
 		return event.target || event.srcElement;
 	},
 
+	getRelatedTarget: function(event) {
+		return event.relatedTarget || event.toElement;
+	},
+
 	getOffset: function(event, target) {
 		return DomEvent.getPoint(event).subtract(DomElement.getOffset(
 				target || DomEvent.getTarget(event)));
 	},
 
-	preventDefault: function(event) {
-		if (event.preventDefault) {
-			event.preventDefault();
-		} else {
-			event.returnValue = false;
-		}
-	},
-
-	stopPropagation: function(event) {
-		if (event.stopPropagation) {
-			event.stopPropagation();
-		} else {
-			event.cancelBubble = true;
-		}
-	},
-
 	stop: function(event) {
-		DomEvent.stopPropagation(event);
-		DomEvent.preventDefault(event);
+		event.stopPropagation();
+		event.preventDefault();
 	}
 };
 
@@ -9675,7 +9767,7 @@ var View = Base.extend(Callback, {
 	remove: function() {
 		if (!this._project)
 			return false;
-		if (View._focused == this)
+		if (View._focused === this)
 			View._focused = null;
 		View._views.splice(View._views.indexOf(this), 1);
 		delete View._viewsById[this._id];
@@ -9685,6 +9777,7 @@ var View = Base.extend(Callback, {
 		DomEvent.remove(window, this._windowHandlers);
 		this._element = this._project = null;
 		this.detach('frame');
+		this._animate = false;
 		this._frameItems = {};
 		return true;
 	},
@@ -9692,13 +9785,11 @@ var View = Base.extend(Callback, {
 	_events: {
 		onFrame: {
 			install: function() {
-				this._animate = true;
-				if (!this._requested)
-					this._requestFrame();
+				this.play();
 			},
 
 			uninstall: function() {
-				this._animate = false;
+				this.pause();
 			}
 		},
 
@@ -9735,7 +9826,7 @@ var View = Base.extend(Callback, {
 		if (this._stats)
 			this._stats.update();
 		this._handlingFrame = false;
-		this.draw(true);
+		this.update();
 	},
 
 	_animateItem: function(item, animate) {
@@ -9766,26 +9857,26 @@ var View = Base.extend(Callback, {
 		}
 	},
 
-	_redraw: function() {
-		this._project._needsRedraw = true;
+	_update: function() {
+		this._project._needsUpdate = true;
 		if (this._handlingFrame)
 			return;
 		if (this._animate) {
 			this._handleFrame();
 		} else {
-			this.draw();
+			this.update();
 		}
 	},
 
 	_changed: function(flags) {
 		if (flags & 1)
-			this._project._needsRedraw = true;
+			this._project._needsUpdate = true;
 	},
 
 	_transform: function(matrix) {
 		this._matrix.concatenate(matrix);
 		this._bounds = null;
-		this._redraw();
+		this._update();
 	},
 
 	getElement: function() {
@@ -9809,7 +9900,7 @@ var View = Base.extend(Callback, {
 			size: size,
 			delta: delta
 		});
-		this._redraw();
+		this._update();
 	},
 
 	_setViewSize: function(size) {
@@ -9856,13 +9947,27 @@ var View = Base.extend(Callback, {
 		this._transform(new Matrix().translate(Point.read(arguments).negate()));
 	},
 
+	play: function() {
+		this._animate = true;
+		if (!this._requested)
+			this._requestFrame();
+	},
+
+	pause: function() {
+		this._animate = false;
+	},
+
+	draw: function() {
+		this.update();
+	},
+
 	projectToView: function() {
 		return this._matrix._transformPoint(Point.read(arguments));
 	},
 
 	viewToProject: function() {
 		return this._matrix._inverseTransform(Point.read(arguments));
-	},
+	}
 
 }, {
 	statics: {
@@ -9907,36 +10012,50 @@ var View = Base.extend(Callback, {
 		var view = View._focused = getView(event),
 			point = viewToProject(view, event);
 		dragging = true;
-		if (view._onMouseDown)
-			view._onMouseDown(event, point);
+		view._handleEvent('mousedown', point, event);
 		if (tool = view._scope._tool)
-			tool._onHandleEvent('mousedown', point, event);
-		view.draw(true);
+			tool._handleEvent('mousedown', point, event);
+		view.update();
+	}
+
+	function handleMouseMove(view, point, event) {
+		view._handleEvent('mousemove', point, event);
+		var tool = view._scope._tool;
+		if (tool) {
+			tool._handleEvent(dragging && tool.responds('mousedrag')
+					? 'mousedrag' : 'mousemove', point, event);
+		}
+		view.update();
+		return tool;
 	}
 
 	function mousemove(event) {
-		var view;
+		var view = View._focused;
 		if (!dragging) {
-			view = getView(event);
-			if (view) {
-				prevFocus = View._focused;
-				View._focused = tempFocus = view;
-			} else if (tempFocus && tempFocus == View._focused) {
-				View._focused = prevFocus;
+			var target = getView(event);
+			if (target) {
+				if (view !== target)
+					handleMouseMove(view, viewToProject(view, event), event);
+				prevFocus = view;
+				view = View._focused = tempFocus = target;
+			} else if (tempFocus && tempFocus === view) {
+				view = View._focused = prevFocus;
 				updateFocus();
 			}
 		}
-		if (!(view = view || View._focused))
-			return;
-		var point = event && viewToProject(view, event);
-		if (view._onMouseMove)
-			view._onMouseMove(event, point);
-		if (tool = view._scope._tool) {
-			if (tool._onHandleEvent(dragging && tool.responds('mousedrag')
-					? 'mousedrag' : 'mousemove', point, event))
-				DomEvent.stop(event);
+		if (view) {
+			var point = viewToProject(view, event);
+			if (dragging || new Rectangle(new Point(),
+					view.getViewSize()).contains(point))
+				tool = handleMouseMove(view, point, event);
 		}
-		view.draw(true);
+	}
+
+	function mouseout(event) {
+		var view = View._focused,
+			target = DomEvent.getRelatedTarget(event);
+		if (view && (!target || target.nodeName === 'HTML'))
+			handleMouseMove(view, viewToProject(view, event), event);
 	}
 
 	function mouseup(event) {
@@ -9946,20 +10065,20 @@ var View = Base.extend(Callback, {
 		var point = viewToProject(view, event);
 		curPoint = null;
 		dragging = false;
-		if (view._onMouseUp)
-			view._onMouseUp(event, point);
-		if (tool && tool._onHandleEvent('mouseup', point, event))
-			DomEvent.stop(event);
-		view.draw(true);
+		view._handleEvent('mouseup', point, event);
+		if (tool)
+			tool._handleEvent('mouseup', point, event);
+		view.update();
 	}
 
 	function selectstart(event) {
 		if (dragging)
-			DomEvent.stop(event);
+			event.preventDefault();
 	}
 
 	DomEvent.add(document, {
 		mousemove: mousemove,
+		mouseout: mouseout,
 		mouseup: mouseup,
 		touchmove: mousemove,
 		touchend: mouseup,
@@ -9977,6 +10096,8 @@ var View = Base.extend(Callback, {
 			touchstart: mousedown,
 			selectstart: selectstart
 		},
+
+		_handleEvent: function() {},
 
 		statics: {
 			updateFocus: updateFocus
@@ -10023,14 +10144,14 @@ var CanvasView = View.extend({
 		}
 	},
 
-	draw: function(checkRedraw) {
-		if (checkRedraw && !this._project._needsRedraw)
+	update: function() {
+		if (!this._project._needsUpdate)
 			return false;
 		var ctx = this._context,
 			size = this._viewSize;
 		ctx.clearRect(0, 0, size.width + 1, size.height + 1);
 		this._project.draw(ctx, this._matrix, this._ratio);
-		this._project._needsRedraw = false;
+		this._project._needsUpdate = false;
 		return true;
 	}
 }, new function() { 
@@ -10041,86 +10162,98 @@ var CanvasView = View.extend({
 		downItem,
 		lastItem,
 		overItem,
-		hasDrag,
-		doubleClick,
+		dragItem,
+		dblClick,
 		clickTime;
 
-	function callEvent(type, event, point, target, lastPoint, bubble) {
+	function callEvent(view, type, event, point, target, lastPoint) {
 		var item = target,
 			mouseEvent;
-		while (item) {
-			if (item.responds(type)) {
-				if (!mouseEvent)
+
+		function call(obj) {
+			if (obj.responds(type)) {
+				if (!mouseEvent) {
 					mouseEvent = new MouseEvent(type, event, point, target,
 							lastPoint ? point.subtract(lastPoint) : null);
-				if (item.fire(type, mouseEvent)
-						&& (!bubble || mouseEvent._stopped))
-					return false;
+				}
+				if (obj.fire(type, mouseEvent) && mouseEvent.isStopped) {
+					event.preventDefault();
+					return true;
+				}
 			}
+		}
+
+		while (item) {
+			if (call(item))
+				return true;
 			item = item.getParent();
 		}
-		return true;
+		if (call(view))
+			return true;
+		return false;
 	}
 
-	function handleEvent(view, type, event, point, lastPoint) {
-		if (view._eventCounters[type]) {
-			var project = view._project,
+	return {
+		_handleEvent: function(type, point, event) {
+			if (!this._eventCounters[type])
+				return;
+			var project = this._project,
 				hit = project.hitTest(point, {
 					tolerance: project.options.hitTolerance || 0,
 					fill: true,
 					stroke: true
 				}),
-				item = hit && hit.item;
-			if (item) {
-				if (type === 'mousemove' && item != overItem)
-					lastPoint = point;
-				if (type !== 'mousemove' || !hasDrag)
-					callEvent(type, event, point, item, lastPoint);
-				return item;
-			}
-		}
-	}
-
-	return {
-		_onMouseDown: function(event, point) {
-			var item = handleEvent(this, 'mousedown', event, point);
-			doubleClick = lastItem == item && (Date.now() - clickTime < 300);
-			downItem = lastItem = item;
-			downPoint = lastPoint = overPoint = point;
-			hasDrag = downItem && downItem.responds('mousedrag');
-		},
-
-		_onMouseUp: function(event, point) {
-			var item = handleEvent(this, 'mouseup', event, point);
-			if (hasDrag) {
-				if (lastPoint && !lastPoint.equals(point))
-					callEvent('mousedrag', event, point, downItem, lastPoint);
-				if (item != downItem) {
-					overPoint = point;
-					callEvent('mousemove', event, point, item, overPoint);
+				item = hit && hit.item,
+				stopped = false;
+			switch (type) {
+			case 'mousedown':
+				stopped = callEvent(this, type, event, point, item);
+				dblClick = lastItem == item && (Date.now() - clickTime < 300);
+				downItem = lastItem = item;
+				downPoint = lastPoint = overPoint = point;
+				dragItem = !stopped && item;
+				while (dragItem && !dragItem.responds('mousedrag'))
+					dragItem = dragItem._parent;
+				break;
+			case 'mouseup':
+				stopped = callEvent(this, type, event, point, item, downPoint);
+				if (dragItem) {
+					if (lastPoint && !lastPoint.equals(point))
+						callEvent(this, 'mousedrag', event, point, dragItem,
+								lastPoint);
+					if (item !== dragItem) {
+						overPoint = point;
+						callEvent(this, 'mousemove', event, point, item,
+								overPoint);
+					}
 				}
+				if (!stopped && item && item === downItem) {
+					clickTime = Date.now();
+					callEvent(this, dblClick && downItem.responds('doubleclick')
+							? 'doubleclick' : 'click', event, downPoint, item);
+					dblClick = false;
+				}
+				downItem = dragItem = null;
+				break;
+			case 'mousemove':
+				if (dragItem)
+					stopped = callEvent(this, 'mousedrag', event, point,
+							dragItem, lastPoint);
+				if (!stopped) {
+					if (item !== overItem)
+						overPoint = point;
+					stopped = callEvent(this, type, event, point, item,
+							overPoint);
+				}
+				lastPoint = overPoint = point;
+				if (item !== overItem) {
+					callEvent(this, 'mouseleave', event, point, overItem);
+					overItem = item;
+					callEvent(this, 'mouseenter', event, point, item);
+				}
+				break;
 			}
-			if (item === downItem) {
-				clickTime = Date.now();
-				if (!doubleClick
-						|| callEvent('doubleclick', event, downPoint, item))
-					callEvent('click', event, downPoint, item);
-				doubleClick = false;
-			}
-			downItem = null;
-			hasDrag = false;
-		},
-
-		_onMouseMove: function(event, point) {
-			if (downItem)
-				callEvent('mousedrag', event, point, downItem, lastPoint);
-			var item = handleEvent(this, 'mousemove', event, point, overPoint);
-			lastPoint = overPoint = point;
-			if (item !== overItem) {
-				callEvent('mouseleave', event, point, overItem);
-				overItem = item;
-				callEvent('mouseenter', event, point, item);
-			}
+			return stopped;
 		}
 	};
 });
@@ -10132,14 +10265,17 @@ var Event = Base.extend({
 		this.event = event;
 	},
 
+	isPrevented: false,
+	isStopped: false,
+
 	preventDefault: function() {
-		this._prevented = true;
-		DomEvent.preventDefault(this.event);
+		this.isPrevented = true;
+		this.event.preventDefault();
 	},
 
 	stopPropagation: function() {
-		this._stopped = true;
-		DomEvent.stopPropagation(this.event);
+		this.isStopped = true;
+		this.event.stopPropagation();
 	},
 
 	stop: function() {
@@ -10236,7 +10372,7 @@ var Key = new function() {
 			paper = scope;
 			tool.fire(type, new KeyEvent(down, key, character, event));
 			if (view)
-				view.draw(true);
+				view.update();
 		}
 	}
 
@@ -10748,7 +10884,7 @@ var Tool = PaperScopeItem.extend({
 				&& this.fire(type, new ToolEvent(this, type, event));
 	},
 
-	_onHandleEvent: function(type, point, event) {
+	_handleEvent: function(type, point, event) {
 		paper = this._scope;
 		var called = false;
 		switch (type) {
@@ -10786,6 +10922,8 @@ var Tool = PaperScopeItem.extend({
 			}
 			break;
 		}
+		if (called)
+			event.preventDefault();
 		return called;
 	}
 
@@ -11115,7 +11253,8 @@ var SVGStyles = Base.each({
 	miterLimit: ['stroke-miterlimit', 'number'],
 	dashArray: ['stroke-dasharray', 'array'],
 	dashOffset: ['stroke-dashoffset', 'number'],
-	font: ['font-family', 'string'],
+	fontFamily: ['font-family', 'string'],
+	fontWeight: ['font-weight', 'string'],
 	fontSize: ['font-size', 'number'],
 	justification: ['text-anchor', 'lookup', {
 		left: 'start',
@@ -11188,10 +11327,10 @@ new function() {
 				scale = decomposed.scaling;
 			if (trans && !trans.isZero())
 				parts.push('translate(' + formatter.point(trans) + ')');
-			if (!Numerical.isZero(scale.x - 1) || !Numerical.isZero(scale.y - 1))
-				parts.push('scale(' + formatter.point(scale) +')');
 			if (angle)
 				parts.push('rotate(' + formatter.number(angle) + ')');
+			if (!Numerical.isZero(scale.x - 1) || !Numerical.isZero(scale.y - 1))
+				parts.push('scale(' + formatter.point(scale) +')');
 			attrs.transform = parts.join(' ');
 		} else {
 			attrs.transform = 'matrix(' + matrix.getValues().join(',') + ')';
@@ -11755,10 +11894,10 @@ new function() {
 				matrix.scale(v);
 				break;
 			case 'skewX':
+				matrix.skew(v[0], 0);
+				break;
 			case 'skewY':
-				var value = Math.tan(v[0] * Math.PI / 180),
-					isX = command == 'skewX';
-				matrix.shear(isX ? value : 0, isX ? 0 : value);
+				matrix.skew(0, v[0]);
 				break;
 			}
 		}
@@ -11904,7 +12043,7 @@ new function() {
 				view = scope.project && scope.project.view;
 			if (onLoad)
 				onLoad.call(this, item);
-			view.draw(true);
+			view.update();
 		}
 
 		if (isRoot) {
@@ -11986,24 +12125,24 @@ paper.PaperScope.prototype.PaperScript = (function(root) {
 !function(e,r){return"object"==typeof exports&&"object"==typeof module?r(exports):"function"==typeof define&&define.amd?define(["exports"],r):(r(e.acorn||(e.acorn={})),void 0)}(this,function(e){"use strict";function r(e){fr=e||{};for(var r in hr)Object.prototype.hasOwnProperty.call(fr,r)||(fr[r]=hr[r]);mr=fr.sourceFile||null}function t(e,r){var t=vr(pr,e);r+=" ("+t.line+":"+t.column+")";var n=new SyntaxError(r);throw n.pos=e,n.loc=t,n.raisedAt=br,n}function n(e){function r(e){if(1==e.length)return t+="return str === "+JSON.stringify(e[0])+";";t+="switch(str){";for(var r=0;r<e.length;++r)t+="case "+JSON.stringify(e[r])+":";t+="return true}return false;"}e=e.split(" ");var t="",n=[];e:for(var a=0;a<e.length;++a){for(var o=0;o<n.length;++o)if(n[o][0].length==e[a].length){n[o].push(e[a]);continue e}n.push([e[a]])}if(n.length>3){n.sort(function(e,r){return r.length-e.length}),t+="switch(str.length){";for(var a=0;a<n.length;++a){var i=n[a];t+="case "+i[0].length+":",r(i)}t+="}"}else r(e);return new Function("str",t)}function a(){this.line=Ar,this.column=br-Sr}function o(){Ar=1,br=Sr=0,Er=!0,u()}function i(e,r){gr=br,fr.locations&&(kr=new a),wr=e,u(),Cr=r,Er=e.beforeExpr}function s(){var e=fr.onComment&&fr.locations&&new a,r=br,n=pr.indexOf("*/",br+=2);if(-1===n&&t(br-2,"Unterminated comment"),br=n+2,fr.locations){Kt.lastIndex=r;for(var o;(o=Kt.exec(pr))&&o.index<br;)++Ar,Sr=o.index+o[0].length}fr.onComment&&fr.onComment(!0,pr.slice(r+2,n),r,br,e,fr.locations&&new a)}function c(){for(var e=br,r=fr.onComment&&fr.locations&&new a,t=pr.charCodeAt(br+=2);dr>br&&10!==t&&13!==t&&8232!==t&&8329!==t;)++br,t=pr.charCodeAt(br);fr.onComment&&fr.onComment(!1,pr.slice(e+2,br),e,br,r,fr.locations&&new a)}function u(){for(;dr>br;){var e=pr.charCodeAt(br);if(32===e)++br;else if(13===e){++br;var r=pr.charCodeAt(br);10===r&&++br,fr.locations&&(++Ar,Sr=br)}else if(10===e)++br,++Ar,Sr=br;else if(14>e&&e>8)++br;else if(47===e){var r=pr.charCodeAt(br+1);if(42===r)s();else{if(47!==r)break;c()}}else if(160===e)++br;else{if(!(e>=5760&&Jt.test(String.fromCharCode(e))))break;++br}}}function l(){var e=pr.charCodeAt(br+1);return e>=48&&57>=e?E(!0):(++br,i(xt))}function f(){var e=pr.charCodeAt(br+1);return Er?(++br,k()):61===e?x(Et,2):x(wt,1)}function p(){var e=pr.charCodeAt(br+1);return 61===e?x(Et,2):x(Ft,1)}function d(e){var r=pr.charCodeAt(br+1);return r===e?x(124===e?Lt:Ut,2):61===r?x(Et,2):x(124===e?Rt:Vt,1)}function m(){var e=pr.charCodeAt(br+1);return 61===e?x(Et,2):x(Tt,1)}function h(e){var r=pr.charCodeAt(br+1);return r===e?x(St,2):61===r?x(Et,2):x(At,1)}function v(e){var r=pr.charCodeAt(br+1),t=1;return r===e?(t=62===e&&62===pr.charCodeAt(br+2)?3:2,61===pr.charCodeAt(br+t)?x(Et,t+1):x(jt,t)):(61===r&&(t=61===pr.charCodeAt(br+2)?3:2),x(Ot,t))}function b(e){var r=pr.charCodeAt(br+1);return 61===r?x(qt,61===pr.charCodeAt(br+2)?3:2):x(61===e?Ct:It,1)}function y(e){switch(e){case 46:return l();case 40:return++br,i(ht);case 41:return++br,i(vt);case 59:return++br,i(yt);case 44:return++br,i(bt);case 91:return++br,i(ft);case 93:return++br,i(pt);case 123:return++br,i(dt);case 125:return++br,i(mt);case 58:return++br,i(gt);case 63:return++br,i(kt);case 48:var r=pr.charCodeAt(br+1);if(120===r||88===r)return C();case 49:case 50:case 51:case 52:case 53:case 54:case 55:case 56:case 57:return E(!1);case 34:case 39:return A(e);case 47:return f(e);case 37:case 42:return p();case 124:case 38:return d(e);case 94:return m();case 43:case 45:return h(e);case 60:case 62:return v(e);case 61:case 33:return b(e);case 126:return x(It,1)}return!1}function g(e){if(e?br=yr+1:yr=br,fr.locations&&(xr=new a),e)return k();if(br>=dr)return i(Br);var r=pr.charCodeAt(br);if(Qt(r)||92===r)return L();var n=y(r);if(n===!1){var o=String.fromCharCode(r);if("\\"===o||$t.test(o))return L();t(br,"Unexpected character '"+o+"'")}return n}function x(e,r){var t=pr.slice(br,br+r);br+=r,i(e,t)}function k(){for(var e,r,n="",a=br;;){br>=dr&&t(a,"Unterminated regular expression");var o=pr.charAt(br);if(Gt.test(o)&&t(a,"Unterminated regular expression"),e)e=!1;else{if("["===o)r=!0;else if("]"===o&&r)r=!1;else if("/"===o&&!r)break;e="\\"===o}++br}var n=pr.slice(a,br);++br;var s=I();return s&&!/^[gmsiy]*$/.test(s)&&t(a,"Invalid regexp flag"),i(jr,new RegExp(n,s))}function w(e,r){for(var t=br,n=0,a=0,o=null==r?1/0:r;o>a;++a){var i,s=pr.charCodeAt(br);if(i=s>=97?s-97+10:s>=65?s-65+10:s>=48&&57>=s?s-48:1/0,i>=e)break;++br,n=n*e+i}return br===t||null!=r&&br-t!==r?null:n}function C(){br+=2;var e=w(16);return null==e&&t(yr+2,"Expected hexadecimal number"),Qt(pr.charCodeAt(br))&&t(br,"Identifier directly after number"),i(Or,e)}function E(e){var r=br,n=!1,a=48===pr.charCodeAt(br);e||null!==w(10)||t(r,"Invalid number"),46===pr.charCodeAt(br)&&(++br,w(10),n=!0);var o=pr.charCodeAt(br);(69===o||101===o)&&(o=pr.charCodeAt(++br),(43===o||45===o)&&++br,null===w(10)&&t(r,"Invalid number"),n=!0),Qt(pr.charCodeAt(br))&&t(br,"Identifier directly after number");var s,c=pr.slice(r,br);return n?s=parseFloat(c):a&&1!==c.length?/[89]/.test(c)||Vr?t(r,"Invalid number"):s=parseInt(c,8):s=parseInt(c,10),i(Or,s)}function A(e){br++;for(var r="";;){br>=dr&&t(yr,"Unterminated string constant");var n=pr.charCodeAt(br);if(n===e)return++br,i(Fr,r);if(92===n){n=pr.charCodeAt(++br);var a=/^[0-7]+/.exec(pr.slice(br,br+3));for(a&&(a=a[0]);a&&parseInt(a,8)>255;)a=a.slice(0,a.length-1);if("0"===a&&(a=null),++br,a)Vr&&t(br-2,"Octal literal in strict mode"),r+=String.fromCharCode(parseInt(a,8)),br+=a.length-1;else switch(n){case 110:r+="\n";break;case 114:r+="\r";break;case 120:r+=String.fromCharCode(S(2));break;case 117:r+=String.fromCharCode(S(4));break;case 85:r+=String.fromCharCode(S(8));break;case 116:r+="	";break;case 98:r+="\b";break;case 118:r+="";break;case 102:r+="\f";break;case 48:r+="\0";break;case 13:10===pr.charCodeAt(br)&&++br;case 10:fr.locations&&(Sr=br,++Ar);break;default:r+=String.fromCharCode(n)}}else(13===n||10===n||8232===n||8329===n)&&t(yr,"Unterminated string constant"),r+=String.fromCharCode(n),++br}}function S(e){var r=w(16,e);return null===r&&t(yr,"Bad character escape sequence"),r}function I(){Bt=!1;for(var e,r=!0,n=br;;){var a=pr.charCodeAt(br);if(Yt(a))Bt&&(e+=pr.charAt(br)),++br;else{if(92!==a)break;Bt||(e=pr.slice(n,br)),Bt=!0,117!=pr.charCodeAt(++br)&&t(br,"Expecting Unicode escape sequence \\uXXXX"),++br;var o=S(4),i=String.fromCharCode(o);i||t(br-1,"Invalid Unicode escape"),(r?Qt(o):Yt(o))||t(br-4,"Invalid Unicode escape"),e+=i}r=!1}return Bt?e:pr.slice(n,br)}function L(){var e=I(),r=Dr;return Bt||(Wt(e)?r=lt[e]:(fr.forbidReserved&&(3===fr.ecmaVersion?Mt:zt)(e)||Vr&&Xt(e))&&t(yr,"The keyword '"+e+"' is reserved")),i(r,e)}function U(){Ir=yr,Lr=gr,Ur=kr,g()}function R(e){for(Vr=e,br=Lr;Sr>br;)Sr=pr.lastIndexOf("\n",Sr-2)+1,--Ar;u(),g()}function T(){this.type=null,this.start=yr,this.end=null}function V(){this.start=xr,this.end=null,null!==mr&&(this.source=mr)}function q(){var e=new T;return fr.locations&&(e.loc=new V),fr.ranges&&(e.range=[yr,0]),e}function O(e){var r=new T;return r.start=e.start,fr.locations&&(r.loc=new V,r.loc.start=e.loc.start),fr.ranges&&(r.range=[e.range[0],0]),r}function j(e,r){return e.type=r,e.end=Lr,fr.locations&&(e.loc.end=Ur),fr.ranges&&(e.range[1]=Lr),e}function F(e){return fr.ecmaVersion>=5&&"ExpressionStatement"===e.type&&"Literal"===e.expression.type&&"use strict"===e.expression.value}function D(e){return wr===e?(U(),!0):void 0}function B(){return!fr.strictSemicolons&&(wr===Br||wr===mt||Gt.test(pr.slice(Lr,yr)))}function M(){D(yt)||B()||X()}function z(e){wr===e?U():X()}function X(){t(yr,"Unexpected token")}function N(e){"Identifier"!==e.type&&"MemberExpression"!==e.type&&t(e.start,"Assigning to rvalue"),Vr&&"Identifier"===e.type&&Nt(e.name)&&t(e.start,"Assigning to "+e.name+" in strict mode")}function W(e){Ir=Lr=br,fr.locations&&(Ur=new a),Rr=Vr=null,Tr=[],g();var r=e||q(),t=!0;for(e||(r.body=[]);wr!==Br;){var n=J();r.body.push(n),t&&F(n)&&R(!0),t=!1}return j(r,"Program")}function J(){wr===wt&&g(!0);var e=wr,r=q();switch(e){case Mr:case Nr:U();var n=e===Mr;D(yt)||B()?r.label=null:wr!==Dr?X():(r.label=lr(),M());for(var a=0;a<Tr.length;++a){var o=Tr[a];if(null==r.label||o.name===r.label.name){if(null!=o.kind&&(n||"loop"===o.kind))break;if(r.label&&n)break}}return a===Tr.length&&t(r.start,"Unsyntactic "+e.keyword),j(r,n?"BreakStatement":"ContinueStatement");case Wr:return U(),M(),j(r,"DebuggerStatement");case Pr:return U(),Tr.push(Zt),r.body=J(),Tr.pop(),z(tt),r.test=P(),M(),j(r,"DoWhileStatement");case _r:if(U(),Tr.push(Zt),z(ht),wr===yt)return $(r,null);if(wr===rt){var i=q();return U(),G(i,!0),1===i.declarations.length&&D(ut)?_(r,i):$(r,i)}var i=K(!1,!0);return D(ut)?(N(i),_(r,i)):$(r,i);case Gr:return U(),cr(r,!0);case Kr:return U(),r.test=P(),r.consequent=J(),r.alternate=D(Hr)?J():null,j(r,"IfStatement");case Qr:return Rr||t(yr,"'return' outside of function"),U(),D(yt)||B()?r.argument=null:(r.argument=K(),M()),j(r,"ReturnStatement");case Yr:U(),r.discriminant=P(),r.cases=[],z(dt),Tr.push(en);for(var s,c;wr!=mt;)if(wr===zr||wr===Jr){var u=wr===zr;s&&j(s,"SwitchCase"),r.cases.push(s=q()),s.consequent=[],U(),u?s.test=K():(c&&t(Ir,"Multiple default clauses"),c=!0,s.test=null),z(gt)}else s||X(),s.consequent.push(J());return s&&j(s,"SwitchCase"),U(),Tr.pop(),j(r,"SwitchStatement");case Zr:return U(),Gt.test(pr.slice(Lr,yr))&&t(Lr,"Illegal newline after throw"),r.argument=K(),M(),j(r,"ThrowStatement");case et:if(U(),r.block=H(),r.handler=null,wr===Xr){var l=q();U(),z(ht),l.param=lr(),Vr&&Nt(l.param.name)&&t(l.param.start,"Binding "+l.param.name+" in strict mode"),z(vt),l.guard=null,l.body=H(),r.handler=j(l,"CatchClause")}return r.guardedHandlers=qr,r.finalizer=D($r)?H():null,r.handler||r.finalizer||t(r.start,"Missing catch or finally clause"),j(r,"TryStatement");case rt:return U(),r=G(r),M(),r;case tt:return U(),r.test=P(),Tr.push(Zt),r.body=J(),Tr.pop(),j(r,"WhileStatement");case nt:return Vr&&t(yr,"'with' in strict mode"),U(),r.object=P(),r.body=J(),j(r,"WithStatement");case dt:return H();case yt:return U(),j(r,"EmptyStatement");default:var f=Cr,p=K();if(e===Dr&&"Identifier"===p.type&&D(gt)){for(var a=0;a<Tr.length;++a)Tr[a].name===f&&t(p.start,"Label '"+f+"' is already declared");var d=wr.isLoop?"loop":wr===Yr?"switch":null;return Tr.push({name:f,kind:d}),r.body=J(),Tr.pop(),r.label=p,j(r,"LabeledStatement")}return r.expression=p,M(),j(r,"ExpressionStatement")}}function P(){z(ht);var e=K();return z(vt),e}function H(e){var r,t=q(),n=!0,a=!1;for(t.body=[],z(dt);!D(mt);){var o=J();t.body.push(o),n&&e&&F(o)&&(r=a,R(a=!0)),n=!1}return a&&!r&&R(!1),j(t,"BlockStatement")}function $(e,r){return e.init=r,z(yt),e.test=wr===yt?null:K(),z(yt),e.update=wr===vt?null:K(),z(vt),e.body=J(),Tr.pop(),j(e,"ForStatement")}function _(e,r){return e.left=r,e.right=K(),z(vt),e.body=J(),Tr.pop(),j(e,"ForInStatement")}function G(e,r){for(e.declarations=[],e.kind="var";;){var n=q();if(n.id=lr(),Vr&&Nt(n.id.name)&&t(n.id.start,"Binding "+n.id.name+" in strict mode"),n.init=D(Ct)?K(!0,r):null,e.declarations.push(j(n,"VariableDeclarator")),!D(bt))break}return j(e,"VariableDeclaration")}function K(e,r){var t=Q(r);if(!e&&wr===bt){var n=O(t);for(n.expressions=[t];D(bt);)n.expressions.push(Q(r));return j(n,"SequenceExpression")}return t}function Q(e){var r=Y(e);if(wr.isAssign){var t=O(r);return t.operator=Cr,t.left=r,U(),t.right=Q(e),N(r),j(t,"AssignmentExpression")}return r}function Y(e){var r=Z(e);if(D(kt)){var t=O(r);return t.test=r,t.consequent=K(!0),z(gt),t.alternate=K(!0,e),j(t,"ConditionalExpression")}return r}function Z(e){return er(rr(),-1,e)}function er(e,r,t){var n=wr.binop;if(null!=n&&(!t||wr!==ut)&&n>r){var a=O(e);a.left=e,a.operator=Cr,U(),a.right=er(rr(),n,t);var a=j(a,/&&|\|\|/.test(a.operator)?"LogicalExpression":"BinaryExpression");return er(a,r,t)}return e}function rr(){if(wr.prefix){var e=q(),r=wr.isUpdate;return e.operator=Cr,e.prefix=!0,U(),e.argument=rr(),r?N(e.argument):Vr&&"delete"===e.operator&&"Identifier"===e.argument.type&&t(e.start,"Deleting local variable in strict mode"),j(e,r?"UpdateExpression":"UnaryExpression")}for(var n=tr();wr.postfix&&!B();){var e=O(n);e.operator=Cr,e.prefix=!1,e.argument=n,N(n),U(),n=j(e,"UpdateExpression")}return n}function tr(){return nr(ar())}function nr(e,r){if(D(xt)){var t=O(e);return t.object=e,t.property=lr(!0),t.computed=!1,nr(j(t,"MemberExpression"),r)}if(D(ft)){var t=O(e);return t.object=e,t.property=K(),t.computed=!0,z(pt),nr(j(t,"MemberExpression"),r)}if(!r&&D(ht)){var t=O(e);return t.callee=e,t.arguments=ur(vt,!1),nr(j(t,"CallExpression"),r)}return e}function ar(){switch(wr){case ot:var e=q();return U(),j(e,"ThisExpression");case Dr:return lr();case Or:case Fr:case jr:var e=q();return e.value=Cr,e.raw=pr.slice(yr,gr),U(),j(e,"Literal");case it:case st:case ct:var e=q();return e.value=wr.atomValue,e.raw=wr.keyword,U(),j(e,"Literal");case ht:var r=xr,t=yr;U();var n=K();return n.start=t,n.end=gr,fr.locations&&(n.loc.start=r,n.loc.end=kr),fr.ranges&&(n.range=[t,gr]),z(vt),n;case ft:var e=q();return U(),e.elements=ur(pt,!0,!0),j(e,"ArrayExpression");case dt:return ir();case Gr:var e=q();return U(),cr(e,!1);case at:return or();default:X()}}function or(){var e=q();return U(),e.callee=nr(ar(),!0),e.arguments=D(ht)?ur(vt,!1):qr,j(e,"NewExpression")}function ir(){var e=q(),r=!0,n=!1;for(e.properties=[],U();!D(mt);){if(r)r=!1;else if(z(bt),fr.allowTrailingCommas&&D(mt))break;var a,o={key:sr()},i=!1;if(D(gt)?(o.value=K(!0),a=o.kind="init"):fr.ecmaVersion>=5&&"Identifier"===o.key.type&&("get"===o.key.name||"set"===o.key.name)?(i=n=!0,a=o.kind=o.key.name,o.key=sr(),wr!==ht&&X(),o.value=cr(q(),!1)):X(),"Identifier"===o.key.type&&(Vr||n))for(var s=0;s<e.properties.length;++s){var c=e.properties[s];if(c.key.name===o.key.name){var u=a==c.kind||i&&"init"===c.kind||"init"===a&&("get"===c.kind||"set"===c.kind);u&&!Vr&&"init"===a&&"init"===c.kind&&(u=!1),u&&t(o.key.start,"Redefinition of property")}}e.properties.push(o)}return j(e,"ObjectExpression")}function sr(){return wr===Or||wr===Fr?ar():lr(!0)}function cr(e,r){wr===Dr?e.id=lr():r?X():e.id=null,e.params=[];var n=!0;for(z(ht);!D(vt);)n?n=!1:z(bt),e.params.push(lr());var a=Rr,o=Tr;if(Rr=!0,Tr=[],e.body=H(!0),Rr=a,Tr=o,Vr||e.body.body.length&&F(e.body.body[0]))for(var i=e.id?-1:0;i<e.params.length;++i){var s=0>i?e.id:e.params[i];if((Xt(s.name)||Nt(s.name))&&t(s.start,"Defining '"+s.name+"' in strict mode"),i>=0)for(var c=0;i>c;++c)s.name===e.params[c].name&&t(s.start,"Argument name clash in strict mode")}return j(e,r?"FunctionDeclaration":"FunctionExpression")}function ur(e,r,t){for(var n=[],a=!0;!D(e);){if(a)a=!1;else if(z(bt),r&&fr.allowTrailingCommas&&D(e))break;t&&wr===bt?n.push(null):n.push(K(!0))}return n}function lr(e){var r=q();return r.name=wr===Dr?Cr:e&&!fr.forbidReserved&&wr.keyword||X(),U(),j(r,"Identifier")}e.version="0.3.2";var fr,pr,dr,mr;e.parse=function(e,t){return pr=String(e),dr=pr.length,r(t),o(),W(fr.program)};var hr=e.defaultOptions={ecmaVersion:5,strictSemicolons:!1,allowTrailingCommas:!0,forbidReserved:!1,locations:!1,onComment:null,ranges:!1,program:null,sourceFile:null},vr=e.getLineInfo=function(e,r){for(var t=1,n=0;;){Kt.lastIndex=n;var a=Kt.exec(e);if(!(a&&a.index<r))break;++t,n=a.index+a[0].length}return{line:t,column:r-n}};e.tokenize=function(e,t){function n(e){return g(e),a.start=yr,a.end=gr,a.startLoc=xr,a.endLoc=kr,a.type=wr,a.value=Cr,a}pr=String(e),dr=pr.length,r(t),o();var a={};return n.jumpTo=function(e,r){if(br=e,fr.locations){Ar=1,Sr=Kt.lastIndex=0;for(var t;(t=Kt.exec(pr))&&t.index<e;)++Ar,Sr=t.index+t[0].length}Er=r,u()},n};var br,yr,gr,xr,kr,wr,Cr,Er,Ar,Sr,Ir,Lr,Ur,Rr,Tr,Vr,qr=[],Or={type:"num"},jr={type:"regexp"},Fr={type:"string"},Dr={type:"name"},Br={type:"eof"},Mr={keyword:"break"},zr={keyword:"case",beforeExpr:!0},Xr={keyword:"catch"},Nr={keyword:"continue"},Wr={keyword:"debugger"},Jr={keyword:"default"},Pr={keyword:"do",isLoop:!0},Hr={keyword:"else",beforeExpr:!0},$r={keyword:"finally"},_r={keyword:"for",isLoop:!0},Gr={keyword:"function"},Kr={keyword:"if"},Qr={keyword:"return",beforeExpr:!0},Yr={keyword:"switch"},Zr={keyword:"throw",beforeExpr:!0},et={keyword:"try"},rt={keyword:"var"},tt={keyword:"while",isLoop:!0},nt={keyword:"with"},at={keyword:"new",beforeExpr:!0},ot={keyword:"this"},it={keyword:"null",atomValue:null},st={keyword:"true",atomValue:!0},ct={keyword:"false",atomValue:!1},ut={keyword:"in",binop:7,beforeExpr:!0},lt={"break":Mr,"case":zr,"catch":Xr,"continue":Nr,"debugger":Wr,"default":Jr,"do":Pr,"else":Hr,"finally":$r,"for":_r,"function":Gr,"if":Kr,"return":Qr,"switch":Yr,"throw":Zr,"try":et,"var":rt,"while":tt,"with":nt,"null":it,"true":st,"false":ct,"new":at,"in":ut,"instanceof":{keyword:"instanceof",binop:7,beforeExpr:!0},"this":ot,"typeof":{keyword:"typeof",prefix:!0,beforeExpr:!0},"void":{keyword:"void",prefix:!0,beforeExpr:!0},"delete":{keyword:"delete",prefix:!0,beforeExpr:!0}},ft={type:"[",beforeExpr:!0},pt={type:"]"},dt={type:"{",beforeExpr:!0},mt={type:"}"},ht={type:"(",beforeExpr:!0},vt={type:")"},bt={type:",",beforeExpr:!0},yt={type:";",beforeExpr:!0},gt={type:":",beforeExpr:!0},xt={type:"."},kt={type:"?",beforeExpr:!0},wt={binop:10,beforeExpr:!0},Ct={isAssign:!0,beforeExpr:!0},Et={isAssign:!0,beforeExpr:!0},At={binop:9,prefix:!0,beforeExpr:!0},St={postfix:!0,prefix:!0,isUpdate:!0},It={prefix:!0,beforeExpr:!0},Lt={binop:1,beforeExpr:!0},Ut={binop:2,beforeExpr:!0},Rt={binop:3,beforeExpr:!0},Tt={binop:4,beforeExpr:!0},Vt={binop:5,beforeExpr:!0},qt={binop:6,beforeExpr:!0},Ot={binop:7,beforeExpr:!0},jt={binop:8,beforeExpr:!0},Ft={binop:10,beforeExpr:!0};e.tokTypes={bracketL:ft,bracketR:pt,braceL:dt,braceR:mt,parenL:ht,parenR:vt,comma:bt,semi:yt,colon:gt,dot:xt,question:kt,slash:wt,eq:Ct,name:Dr,eof:Br,num:Or,regexp:jr,string:Fr};for(var Dt in lt)e.tokTypes["_"+Dt]=lt[Dt];var Bt,Mt=n("abstract boolean byte char class double enum export extends final float goto implements import int interface long native package private protected public short static super synchronized throws transient volatile"),zt=n("class enum extends super const export import"),Xt=n("implements interface let package private protected public static yield"),Nt=n("eval arguments"),Wt=n("break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this"),Jt=/[\u1680\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]/,Pt="\xaa\xb5\xba\xc0-\xd6\xd8-\xf6\xf8-\u02c1\u02c6-\u02d1\u02e0-\u02e4\u02ec\u02ee\u0370-\u0374\u0376\u0377\u037a-\u037d\u0386\u0388-\u038a\u038c\u038e-\u03a1\u03a3-\u03f5\u03f7-\u0481\u048a-\u0527\u0531-\u0556\u0559\u0561-\u0587\u05d0-\u05ea\u05f0-\u05f2\u0620-\u064a\u066e\u066f\u0671-\u06d3\u06d5\u06e5\u06e6\u06ee\u06ef\u06fa-\u06fc\u06ff\u0710\u0712-\u072f\u074d-\u07a5\u07b1\u07ca-\u07ea\u07f4\u07f5\u07fa\u0800-\u0815\u081a\u0824\u0828\u0840-\u0858\u08a0\u08a2-\u08ac\u0904-\u0939\u093d\u0950\u0958-\u0961\u0971-\u0977\u0979-\u097f\u0985-\u098c\u098f\u0990\u0993-\u09a8\u09aa-\u09b0\u09b2\u09b6-\u09b9\u09bd\u09ce\u09dc\u09dd\u09df-\u09e1\u09f0\u09f1\u0a05-\u0a0a\u0a0f\u0a10\u0a13-\u0a28\u0a2a-\u0a30\u0a32\u0a33\u0a35\u0a36\u0a38\u0a39\u0a59-\u0a5c\u0a5e\u0a72-\u0a74\u0a85-\u0a8d\u0a8f-\u0a91\u0a93-\u0aa8\u0aaa-\u0ab0\u0ab2\u0ab3\u0ab5-\u0ab9\u0abd\u0ad0\u0ae0\u0ae1\u0b05-\u0b0c\u0b0f\u0b10\u0b13-\u0b28\u0b2a-\u0b30\u0b32\u0b33\u0b35-\u0b39\u0b3d\u0b5c\u0b5d\u0b5f-\u0b61\u0b71\u0b83\u0b85-\u0b8a\u0b8e-\u0b90\u0b92-\u0b95\u0b99\u0b9a\u0b9c\u0b9e\u0b9f\u0ba3\u0ba4\u0ba8-\u0baa\u0bae-\u0bb9\u0bd0\u0c05-\u0c0c\u0c0e-\u0c10\u0c12-\u0c28\u0c2a-\u0c33\u0c35-\u0c39\u0c3d\u0c58\u0c59\u0c60\u0c61\u0c85-\u0c8c\u0c8e-\u0c90\u0c92-\u0ca8\u0caa-\u0cb3\u0cb5-\u0cb9\u0cbd\u0cde\u0ce0\u0ce1\u0cf1\u0cf2\u0d05-\u0d0c\u0d0e-\u0d10\u0d12-\u0d3a\u0d3d\u0d4e\u0d60\u0d61\u0d7a-\u0d7f\u0d85-\u0d96\u0d9a-\u0db1\u0db3-\u0dbb\u0dbd\u0dc0-\u0dc6\u0e01-\u0e30\u0e32\u0e33\u0e40-\u0e46\u0e81\u0e82\u0e84\u0e87\u0e88\u0e8a\u0e8d\u0e94-\u0e97\u0e99-\u0e9f\u0ea1-\u0ea3\u0ea5\u0ea7\u0eaa\u0eab\u0ead-\u0eb0\u0eb2\u0eb3\u0ebd\u0ec0-\u0ec4\u0ec6\u0edc-\u0edf\u0f00\u0f40-\u0f47\u0f49-\u0f6c\u0f88-\u0f8c\u1000-\u102a\u103f\u1050-\u1055\u105a-\u105d\u1061\u1065\u1066\u106e-\u1070\u1075-\u1081\u108e\u10a0-\u10c5\u10c7\u10cd\u10d0-\u10fa\u10fc-\u1248\u124a-\u124d\u1250-\u1256\u1258\u125a-\u125d\u1260-\u1288\u128a-\u128d\u1290-\u12b0\u12b2-\u12b5\u12b8-\u12be\u12c0\u12c2-\u12c5\u12c8-\u12d6\u12d8-\u1310\u1312-\u1315\u1318-\u135a\u1380-\u138f\u13a0-\u13f4\u1401-\u166c\u166f-\u167f\u1681-\u169a\u16a0-\u16ea\u16ee-\u16f0\u1700-\u170c\u170e-\u1711\u1720-\u1731\u1740-\u1751\u1760-\u176c\u176e-\u1770\u1780-\u17b3\u17d7\u17dc\u1820-\u1877\u1880-\u18a8\u18aa\u18b0-\u18f5\u1900-\u191c\u1950-\u196d\u1970-\u1974\u1980-\u19ab\u19c1-\u19c7\u1a00-\u1a16\u1a20-\u1a54\u1aa7\u1b05-\u1b33\u1b45-\u1b4b\u1b83-\u1ba0\u1bae\u1baf\u1bba-\u1be5\u1c00-\u1c23\u1c4d-\u1c4f\u1c5a-\u1c7d\u1ce9-\u1cec\u1cee-\u1cf1\u1cf5\u1cf6\u1d00-\u1dbf\u1e00-\u1f15\u1f18-\u1f1d\u1f20-\u1f45\u1f48-\u1f4d\u1f50-\u1f57\u1f59\u1f5b\u1f5d\u1f5f-\u1f7d\u1f80-\u1fb4\u1fb6-\u1fbc\u1fbe\u1fc2-\u1fc4\u1fc6-\u1fcc\u1fd0-\u1fd3\u1fd6-\u1fdb\u1fe0-\u1fec\u1ff2-\u1ff4\u1ff6-\u1ffc\u2071\u207f\u2090-\u209c\u2102\u2107\u210a-\u2113\u2115\u2119-\u211d\u2124\u2126\u2128\u212a-\u212d\u212f-\u2139\u213c-\u213f\u2145-\u2149\u214e\u2160-\u2188\u2c00-\u2c2e\u2c30-\u2c5e\u2c60-\u2ce4\u2ceb-\u2cee\u2cf2\u2cf3\u2d00-\u2d25\u2d27\u2d2d\u2d30-\u2d67\u2d6f\u2d80-\u2d96\u2da0-\u2da6\u2da8-\u2dae\u2db0-\u2db6\u2db8-\u2dbe\u2dc0-\u2dc6\u2dc8-\u2dce\u2dd0-\u2dd6\u2dd8-\u2dde\u2e2f\u3005-\u3007\u3021-\u3029\u3031-\u3035\u3038-\u303c\u3041-\u3096\u309d-\u309f\u30a1-\u30fa\u30fc-\u30ff\u3105-\u312d\u3131-\u318e\u31a0-\u31ba\u31f0-\u31ff\u3400-\u4db5\u4e00-\u9fcc\ua000-\ua48c\ua4d0-\ua4fd\ua500-\ua60c\ua610-\ua61f\ua62a\ua62b\ua640-\ua66e\ua67f-\ua697\ua6a0-\ua6ef\ua717-\ua71f\ua722-\ua788\ua78b-\ua78e\ua790-\ua793\ua7a0-\ua7aa\ua7f8-\ua801\ua803-\ua805\ua807-\ua80a\ua80c-\ua822\ua840-\ua873\ua882-\ua8b3\ua8f2-\ua8f7\ua8fb\ua90a-\ua925\ua930-\ua946\ua960-\ua97c\ua984-\ua9b2\ua9cf\uaa00-\uaa28\uaa40-\uaa42\uaa44-\uaa4b\uaa60-\uaa76\uaa7a\uaa80-\uaaaf\uaab1\uaab5\uaab6\uaab9-\uaabd\uaac0\uaac2\uaadb-\uaadd\uaae0-\uaaea\uaaf2-\uaaf4\uab01-\uab06\uab09-\uab0e\uab11-\uab16\uab20-\uab26\uab28-\uab2e\uabc0-\uabe2\uac00-\ud7a3\ud7b0-\ud7c6\ud7cb-\ud7fb\uf900-\ufa6d\ufa70-\ufad9\ufb00-\ufb06\ufb13-\ufb17\ufb1d\ufb1f-\ufb28\ufb2a-\ufb36\ufb38-\ufb3c\ufb3e\ufb40\ufb41\ufb43\ufb44\ufb46-\ufbb1\ufbd3-\ufd3d\ufd50-\ufd8f\ufd92-\ufdc7\ufdf0-\ufdfb\ufe70-\ufe74\ufe76-\ufefc\uff21-\uff3a\uff41-\uff5a\uff66-\uffbe\uffc2-\uffc7\uffca-\uffcf\uffd2-\uffd7\uffda-\uffdc",Ht="\u0300-\u036f\u0483-\u0487\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7\u0610-\u061a\u0620-\u0649\u0672-\u06d3\u06e7-\u06e8\u06fb-\u06fc\u0730-\u074a\u0800-\u0814\u081b-\u0823\u0825-\u0827\u0829-\u082d\u0840-\u0857\u08e4-\u08fe\u0900-\u0903\u093a-\u093c\u093e-\u094f\u0951-\u0957\u0962-\u0963\u0966-\u096f\u0981-\u0983\u09bc\u09be-\u09c4\u09c7\u09c8\u09d7\u09df-\u09e0\u0a01-\u0a03\u0a3c\u0a3e-\u0a42\u0a47\u0a48\u0a4b-\u0a4d\u0a51\u0a66-\u0a71\u0a75\u0a81-\u0a83\u0abc\u0abe-\u0ac5\u0ac7-\u0ac9\u0acb-\u0acd\u0ae2-\u0ae3\u0ae6-\u0aef\u0b01-\u0b03\u0b3c\u0b3e-\u0b44\u0b47\u0b48\u0b4b-\u0b4d\u0b56\u0b57\u0b5f-\u0b60\u0b66-\u0b6f\u0b82\u0bbe-\u0bc2\u0bc6-\u0bc8\u0bca-\u0bcd\u0bd7\u0be6-\u0bef\u0c01-\u0c03\u0c46-\u0c48\u0c4a-\u0c4d\u0c55\u0c56\u0c62-\u0c63\u0c66-\u0c6f\u0c82\u0c83\u0cbc\u0cbe-\u0cc4\u0cc6-\u0cc8\u0cca-\u0ccd\u0cd5\u0cd6\u0ce2-\u0ce3\u0ce6-\u0cef\u0d02\u0d03\u0d46-\u0d48\u0d57\u0d62-\u0d63\u0d66-\u0d6f\u0d82\u0d83\u0dca\u0dcf-\u0dd4\u0dd6\u0dd8-\u0ddf\u0df2\u0df3\u0e34-\u0e3a\u0e40-\u0e45\u0e50-\u0e59\u0eb4-\u0eb9\u0ec8-\u0ecd\u0ed0-\u0ed9\u0f18\u0f19\u0f20-\u0f29\u0f35\u0f37\u0f39\u0f41-\u0f47\u0f71-\u0f84\u0f86-\u0f87\u0f8d-\u0f97\u0f99-\u0fbc\u0fc6\u1000-\u1029\u1040-\u1049\u1067-\u106d\u1071-\u1074\u1082-\u108d\u108f-\u109d\u135d-\u135f\u170e-\u1710\u1720-\u1730\u1740-\u1750\u1772\u1773\u1780-\u17b2\u17dd\u17e0-\u17e9\u180b-\u180d\u1810-\u1819\u1920-\u192b\u1930-\u193b\u1951-\u196d\u19b0-\u19c0\u19c8-\u19c9\u19d0-\u19d9\u1a00-\u1a15\u1a20-\u1a53\u1a60-\u1a7c\u1a7f-\u1a89\u1a90-\u1a99\u1b46-\u1b4b\u1b50-\u1b59\u1b6b-\u1b73\u1bb0-\u1bb9\u1be6-\u1bf3\u1c00-\u1c22\u1c40-\u1c49\u1c5b-\u1c7d\u1cd0-\u1cd2\u1d00-\u1dbe\u1e01-\u1f15\u200c\u200d\u203f\u2040\u2054\u20d0-\u20dc\u20e1\u20e5-\u20f0\u2d81-\u2d96\u2de0-\u2dff\u3021-\u3028\u3099\u309a\ua640-\ua66d\ua674-\ua67d\ua69f\ua6f0-\ua6f1\ua7f8-\ua800\ua806\ua80b\ua823-\ua827\ua880-\ua881\ua8b4-\ua8c4\ua8d0-\ua8d9\ua8f3-\ua8f7\ua900-\ua909\ua926-\ua92d\ua930-\ua945\ua980-\ua983\ua9b3-\ua9c0\uaa00-\uaa27\uaa40-\uaa41\uaa4c-\uaa4d\uaa50-\uaa59\uaa7b\uaae0-\uaae9\uaaf2-\uaaf3\uabc0-\uabe1\uabec\uabed\uabf0-\uabf9\ufb20-\ufb28\ufe00-\ufe0f\ufe20-\ufe26\ufe33\ufe34\ufe4d-\ufe4f\uff10-\uff19\uff3f",$t=new RegExp("["+Pt+"]"),_t=new RegExp("["+Pt+Ht+"]"),Gt=/[\n\r\u2028\u2029]/,Kt=/\r\n|[\n\r\u2028\u2029]/g,Qt=e.isIdentifierStart=function(e){return 65>e?36===e:91>e?!0:97>e?95===e:123>e?!0:e>=170&&$t.test(String.fromCharCode(e))},Yt=e.isIdentifierChar=function(e){return 48>e?36===e:58>e?!0:65>e?!1:91>e?!0:97>e?95===e:123>e?!0:e>=170&&_t.test(String.fromCharCode(e))},Zt={kind:"loop"},en={kind:"switch"}});
 
 	var binaryOperators = {
-		'+': '_add',
-		'-': '_subtract',
-		'*': '_multiply',
-		'/': '_divide',
-		'%': '_modulo',
+		'+': '__add',
+		'-': '__subtract',
+		'*': '__multiply',
+		'/': '__divide',
+		'%': '__modulo',
 		'==': 'equals',
 		'!=': 'equals'
 	};
 
 	var unaryOperators = {
-		'-': '_negate',
+		'-': '__negate',
 		'+': null
 	};
 
 	var fields = Base.each(
 		['add', 'subtract', 'multiply', 'divide', 'modulo', 'negate'],
 		function(name) {
-			this['_' + name] = '#' + name;
+			this['__' + name] = '#' + name;
 		}, 
 		{}
 	);
@@ -12175,7 +12314,7 @@ paper.PaperScope.prototype.PaperScript = (function(root) {
 					});
 					if (onFrame)
 						view.setOnFrame(onFrame);
-					view.draw();
+					view.update();
 				}
 			}).call(scope);
 		}
