@@ -6,7 +6,24 @@
 
 //UPSTREAM MODIFICATIONS by ''nicholaswmin''.I put use strict here for no reason, just for testing.
 "use strict";
-
+//Upstream Modification by ''nicholawmin''. I added the following variables because the commit  ''Removed using paper etc e1667029e8b9ea02105cf239da4ff7ca7772e9c9" removed these
+//and broke the add segment functionality. Chrome Canary and others were producing '' Segment not defined thingy''.
+var Base = paper.Base,
+ PaperScope = paper.PaperScope,
+ Item = paper.Item,
+ Path = paper.Path,
+ PathItem = paper.PathItem,
+ CompoundPath = paper.CompoundPath,
+ Group = paper.Group,
+ Layer = paper.Layer,
+ Segment = paper.Segment,
+ Raster = paper.Raster,
+ Tool = paper.Tool,
+ Component = paper.Component,
+ Point = paper.Point,
+ Rectangle = paper.Rectangle,
+ Matrix = paper.Matrix,
+ Size = paper.Size;
 
 function Undo(maxUndos) {
 	this.states = [];
