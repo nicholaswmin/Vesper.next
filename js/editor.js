@@ -360,6 +360,8 @@ function hideSelectionBounds() {
 			selectionBoundsShape.visible = false;
 	}
 }
+//UPSTREAD MODIFICATION BY NICHOLASWMIN. Let's give the bounding box a rect.name property "boundingBoxRect" in order to have something to identify it when 
+//we iterate over the selected.index in editor.Next.js. The bbox gets selected as well so in some cases we need to disregard it.(i.e sendToBackOne function)
 
 function updateSelectionState() {
 	paper.project.options.handleSize = 8;
@@ -367,6 +369,7 @@ function updateSelectionState() {
 	selectionBounds = getSelectionBounds();
 	if (selectionBounds != null) {
 		var rect =  new paper.Path.Rectangle(selectionBounds);
+		rect.name="boundingBoxRect";
 		//var color = paper.project.activeLayer.getSelectedColor();
 		rect.strokeColor = 'rgba(0,0,0,0)'; //color ? color : '#009dec';
 		rect.strokeWidth = 1.0 / paper.view.zoom;
@@ -1477,7 +1480,6 @@ toolPen.on({
 				//specified by the ext-globalVariables.js file. It allows the user to draw elementType's based on their currently selected tool.
 				//Also added some transparency to help the user see elements hiding behind other elements
 				path.fillColor = currentToolColor;
-				path.opacity = 0.5;
 				path.strokeColor = 'black';
 				this.pathId = path.id;
 			

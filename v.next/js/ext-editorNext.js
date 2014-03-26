@@ -4,8 +4,16 @@
 //Function that iterates over all ''Selected Elements'' and pushes them to the back of the ''DOM''(Paper.js uses something else, not exactly a DOM)
 //Some functions such as the following, i copied and pasted the ''Cut'' function code and altered it a bit, so their undo string still points to ''cut''. 
 //Not sure what to replace ''cut'' with in undo for these functions.
+window.onload = function() {
+		// Get a reference to the canvas object
+		
+		// Create an empty project and a view for the canvas:
+		paper.install(window);
 
-function bringToBackSelection() {
+	};
+
+
+function sendToBack() {
 	clipboard = captureSelectionState();
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
@@ -15,7 +23,7 @@ function bringToBackSelection() {
 }
 
 //Function that iterates over all ''Selected Elements'' and pushes them to the front.
-function bringToFrontSelection() {
+function bringFrontMost() {
 	clipboard = captureSelectionState();
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
@@ -23,6 +31,42 @@ function bringToFrontSelection() {
 	}
 	undo.snapshot("Cut");
 }
+
+//Here we need to get the current index of the selected element in order to add +1 or substract -1 from the current index in order to move the selected in steps.
+//We add a name property to the bounding box in editor.js in order to have something to identify it, because we need to disregard it here. The bbox gets selected as well
+//and it messes up the calculations.
+function bringFrontOne() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		if (selected[i].name === "boundingBoxRect") continue;
+		var finalPosition = selected[i].index +1 ;
+		project.activeLayer.insertChild(finalPosition, selected[i]);
+		console.log(selected[i].index);
+	}
+	undo.snapshot("Cut");
+}
+
+
+function sendBackOne() {
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		if (selected[i].name === "boundingBoxRect") continue;
+		if (selected[i].index > 0)
+		{
+		var finalPosition = selected[i].index -1 ;
+		project.activeLayer.insertChild(finalPosition, selected[i]);
+		console.log(selected[i].index); 
+	    }
+	    else
+	    {
+	    	console.log("Reached the bottom of the selected index stack");
+	    }
+	}
+	undo.snapshot("Cut");
+}
+
 
 //The BoolOps/3D algorithms that are supposed to be plugged in later identify ''Material/Holes/Raster Engravings/Vector Engravings'' by their HTML colors. 
 // So we need to ''illuminate'' each element on the canvas with it's respective HTML color. The HTML colors also help the user know what elementType he is currently
@@ -299,12 +343,20 @@ $("#tool-material").click(function() {
 	});
 
 
-    $("#tool-moveFront").click(function() {
-		bringToBackSelection();
+    $("#tool-sendToBack").click(function() {
+		sendToBack();
 	});
 
-	$("#tool-moveFrontMost").click(function() {
-		bringToFrontSelection();
+	$("#tool-bringFrontMost").click(function() {
+		bringFrontMost();
+	});
+
+	$("#tool-sendBackOne").click(function() {
+		tool-sendBackOne();
+	});
+
+	$("#tool-bringFrontOne").click(function() {
+		bringFrontOne();
 	});
 
 	$("#toolRotateClockwise").click(function() {
