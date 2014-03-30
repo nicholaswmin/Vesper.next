@@ -55,6 +55,7 @@
 		<li id="tool-hole" class="button"><img title="Punch Hole" src="img/elementHole.png" /></li>
 		<li id="tool-rasterEngrave" class="button"><img title="Raster Engrave" src="img/elementRasterEngrave.png" /></li>
 		<li id="tool-vectorEngrave" class="button"><img title="Line Engrave" src="img/elementVectorEngrave.png" /></li>
+		<li id="tool-placeImage" class="button"><img title="Trace Image" src="img/traceImage.png" /></li>
 	</ul>
 
 
@@ -65,20 +66,22 @@
 		<li id="copy" class="button"><img title="Copy" src="img/copy.png" /></li>
 		<li id="paste" class="button"><img title="Paste" src="img/paste.png" /></li>
 		<li id="delete" class="button"><img title="Delete" src="img/delete.png" /></li>
-		<li id="tool-moveFront" class="button"><img title="Send Back" src="img/bringBackMost.png" /></li>
-		<li id="tool-moveFrontMost" class="button"><img title="Bring Front" src="img/bringFrontMost.png" /></li>
-
-	   <!--Split a right toolbar that should contain tools, that appear only when elements are selected
-    -->	
+	    <li id="tool-sendBackOne" class="button"><img title="Back +1" src="img/bringBackOne.png" /></li>
+		<li id="tool-sendToBack" class="button"><img title="Send Back" src="img/bringBackMost.png" /></li>
+		<li id="tool-bringFrontOne" class="button"><img title="Front +1" src="img/bringFrontOne.png" /></li>
+		<li id="tool-bringFrontMost" class="button"><img title="Bring Front" src="img/bringFrontMost.png" /></li>
 		<li><input type="text" id="elementXPosition" class="form-control" placeholder="X position"></li>
 		<li><input type="text" id="elementYPosition" class="form-control" placeholder="Y position"></li>
 		<li><input type="text" id="elementWidth" class="form-control" placeholder="Width"></li>
 		<li><input type="text" id="elementHeight" class="form-control" placeholder="Height"></li>
 		<li id="toolRotateClockwise" class="button"><img title="Rotate clockwise 45" src="img/rotateClockwise.png" /></li>
 		<li id="toolRotateCounterClockwise" class="button"><img title="Rotate counter-clockwise 45 " src="img/rotateCounterClockwise.png" /></li>
-		<li id="toolFlipHorizontally" class="button"><img title="Flip Horizontally" src="img/flipHorizontally.png" /></li>
-		<li id="toolFlipVertically" class="button"><img title="Flip Vertically" src="img/FlipVertically.png" /></li>
+		<li id="toolFlipHorizontally" class="button"><img title="Flip Horizontally" src="img/FlipVertically.png" /></li>
+		<li id="toolFlipVertically" class="button"><img title="Flip Vertically" src="img/flipHorizontally.png" /></li>
 	</ul>
 	<canvas id="canvas" resize></canvas>
 </body>
+<!--The following image is used as a container for placing a Raster on the canvas since paper.Raster requires that we use the id of an image tag to load an image. The source is empty because
+the user defines the source of the image when we trigger the placeImage function -->	
+<img src="" id ="mona" style="display:none" alt="Smiley face" height="42" width="42">
 </html>

@@ -1,5 +1,27 @@
 // Additional Functionality added by ''Nicholas Kyriakides''. 
 
+//Let's disable the right click context menu for the canvas
+
+window.onload = function() {
+		// Get a reference to the canvas object
+		// Create an empty project and a view for the canvas:
+		paper.install(window);
+		$('body').on('contextmenu', '#canvas', function(e){ return false; });
+
+	};
+
+//The function below allows the user to place a Raster Image on the canvas(he might want to trace over it with a path).
+
+function placeImage() {
+    var imgUrl = prompt("Please enter your url");
+    document.getElementById("mona").src=imgUrl;
+    var raster = new paper.Raster('mona');
+	raster.addChild;
+    raster.position = paper.view.center;
+    raster.selected = true;
+    raster.index = 0;
+	undo.snapshot("Cut");
+}
 
 //Function that iterates over all ''Selected Elements'' and pushes them to the back of the ''DOM''(Paper.js uses something else, not exactly a DOM)
 //Some functions such as the following, i copied and pasted the ''Cut'' function code and altered it a bit, so their undo string still points to ''cut''. 
@@ -326,7 +348,11 @@ var path2 = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,ma
 //The following functions are the triggers for the additional functionality added in this file. They ''glue'' together the buttons from the HTML file and the 
 //additional functionality in this file.
 
-$("#tool-material").click(function() {
+    $("#tool-placeImage").click(function() {
+		placeImage();
+	});
+
+    $("#tool-material").click(function() {
 		setElementTypeMaterial();
 	});
 

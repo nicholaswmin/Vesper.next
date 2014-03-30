@@ -505,6 +505,14 @@ function getSegmentsInRect(rect) {
 		if (item._locked || !item._visible || item._guide)
 			return;
 		var children = item.children;
+
+
+//UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
+//therefore we halt it's selection by returning. We check for the item's type and if it equals to "Raster" then we need to ignore it. There is also another check on the Direct Select Tool.
+		if (item.type === "raster") {
+			return;
+		}
+
 		if (!rect.intersects(item.bounds))
 			return;
 		if (item instanceof paper.Path) {
@@ -533,6 +541,14 @@ function getPathsIntersectingRect(rect) {
 
 	function checkPathItem(item) {
 		var children = item.children;
+
+//UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
+//therefore we halt it's selection by returning. We check for the item's type and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
+
+		if (item.type === "raster") {
+			return;
+		}
+
 		if (item.equals(boundingRect))
 			return;
 		if (!rect.intersects(item.bounds))
@@ -624,7 +640,9 @@ toolSelect.hitTest = function(event) {
 		this.hitItem = paper.project.hitTest(event.point, { fill:true, stroke:true, tolerance: hitSize });
 
 	if (this.hitItem) {
-		if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke') {
+
+//UPSTREAD MODIFICATION BY nicholaswmin. Here we need to add this.hitItem.type == 'pixel' in order to pickup pixels as well, not only strokes and fills as the default Stylii has it.
+		if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke' || this.hitItem.type == 'pixel') {
 			if (this.hitItem.item.selected) {
 				setCanvasCursor('cursor-arrow-small');
 			} else {
@@ -653,7 +671,8 @@ toolSelect.on({
 		this.changed = false;
 
 		if (this.hitItem) {
-			if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke') {
+//UPSTREAD MODIFICATION BY nicholaswmin. Here we need to add this.hitItem.type == 'pixel' in order to pickup pixels as well, not only strokes and fills as the default Stylii has it.
+			if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke' || this.hitItem.type == 'pixel') {
 				if (event.modifiers.shift) {
 					this.hitItem.item.selected = !this.hitItem.item.selected;
 				} else {
@@ -769,18 +788,23 @@ toolDirectSelect.hitTest = function(event) {
 	// Hit test selected handles
 	hit = null;
 	if (event.point)
-		hit = paper.project.hitTest(event.point, { selected: true, handles: true, tolerance: hitSize });
+//UPSTREAM MODIFICATION BY nicholaswmin. Here the original Stylii (March 2014), does not pass to the hitTest the properties fill and stroke. This had the issue that when we had a path
+//on top of a raster image we could not select it/its points or its handles with the Direct Select tool. Adding these 2 properties fixes this but i have no idea why.
+		hit = paper.project.hitTest(event.point, { fill:true, stroke:true, selected: true, handles: true, tolerance: hitSize });
 	if (hit)
 		this.hitItem = hit;
 	// Hit test points
 	hit = null;
 	if (event.point)
-		hit = paper.project.hitTest(event.point, { segments: true, tolerance: hitSize });
+//UPSTREAM MODIFICATION BY nicholaswmin. Here the original Stylii (March 2014), does not pass to the hitTest the properties fill and stroke and handles. This had the issue 
+//that when we had a path on top of a raster image we could not select it/its points or its handles with the Direct Select tool. Adding these 3 properties fixes this but i have no idea why.
+		hit = paper.project.hitTest(event.point, { fill:true, stroke:true, handles:true, segments: true, tolerance: hitSize });
 	if (hit)
 		this.hitItem = hit;
 
 	if (this.hitItem) {
-		if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke') {
+//UPSTREAD MODIFICATION BY nicholaswmin. Here we need to add this.hitItem.type == 'pixel' in order to pickup pixels as well, not only strokes and fills as the default Stylii has it.
+		if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke' || this.hitItem.type == 'pixel') {
 			if (this.hitItem.item.selected) {
 				setCanvasCursor('cursor-arrow-small');
 			} else {
@@ -814,7 +838,8 @@ toolDirectSelect.on({
 		this.changed = false;
 
 		if (this.hitItem) {
-			if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke') {
+//UPSTREAD MODIFICATION BY nicholaswmin. Here we need to add this.hitItem.type == 'pixel' in order to pickup pixels as well, not only strokes and fills as the default Stylii has it.
+			if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke' || this.hitItem.type == 'stroke') {
 				if (event.modifiers.shift) {
 					this.hitItem.item.selected = !this.hitItem.item.selected;
 				} else {
@@ -1379,8 +1404,21 @@ toolPen.hitTest = function(event, type) {
 	if (event.point)
 		result = paper.project.hitTest(event.point, { segments: true, stroke: true, tolerance: hitSize });
 
+//UPSTREAM MODIFICATION by nicholaswmin. Current version of Stylii (March 2014), we had the issue that when we tried to draw a path starting on top of a raster we got an error and the
+//path was not drawn. Below i added a case that says that if we hit a pixel we should start creating a path as well? I am not sure that I understood correctly what i did here.
 	if (result) {
-		if (result.type == 'stroke') {
+        if (result.type == 'pixel'  ){
+	     	if (result.item.selected) {
+        	this.mode = 'create';
+			setCanvasCursor('cursor-pen-create');
+		    }
+		else {
+				result = null;
+			 } 
+
+        }
+		else if (result.type == 'stroke' ) {
+		
 			if (result.item.selected) {
 				// Insert point.
 				this.mode = 'insert';
