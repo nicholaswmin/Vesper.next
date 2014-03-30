@@ -508,10 +508,12 @@ function getSegmentsInRect(rect) {
 
 
 //UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
-//therefore we halt it's selection by returning. We check for the item's type and if it equals to "Raster" then we need to ignore it. There is also another check on the Direct Select Tool.
-		if (item.type === "raster") {
+//therefore we halt it's selection by returning. We check for the item's className and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
+
+		if (item.className === "Raster") {
 			return;
 		}
+
 
 		if (!rect.intersects(item.bounds))
 			return;
@@ -543,9 +545,9 @@ function getPathsIntersectingRect(rect) {
 		var children = item.children;
 
 //UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
-//therefore we halt it's selection by returning. We check for the item's type and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
+//therefore we halt it's selection by returning. We check for the item's className and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
 
-		if (item.type === "raster") {
+		if (item.className === "Raster") {
 			return;
 		}
 
