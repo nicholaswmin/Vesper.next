@@ -2,13 +2,10 @@
 
 //Let's disable the right click context menu for the canvas
 
-window.onload = function() {
-		// Get a reference to the canvas object
-		// Create an empty project and a view for the canvas:
-		paper.install(window);
-		$('body').on('contextmenu', '#canvas', function(e){ return false; });
-
-	};
+$( document ).ready(function() {
+	paper.install(window);
+	$('body').on('contextmenu', '#canvas', function(e){ return false; });
+});
 
 //The function below allows the user to place a Raster Image on the canvas(he might want to trace over it with a path).
 
