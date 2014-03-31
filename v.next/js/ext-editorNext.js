@@ -234,6 +234,8 @@ function flipHorizontally() {
 	for (var i = 0; i < selected.length; i++) {
 
 	selected[i].scale(-1,1);
+//Functions that have to do with recalculating the Bbox of items sometimes fail to do so therefore we need to do it manually.
+	updateSelectionState()
 	 	
 	 }
 
@@ -250,6 +252,8 @@ function flipVertically() {
 	for (var i = 0; i < selected.length; i++) {
 
 	selected[i].scale(1,-1);
+//Functions that have to do with recalculating the Bbox of items sometimes fail to do so therefore we need to do it manually.
+	updateSelectionState()
 	 	
 	 }
 
@@ -302,7 +306,8 @@ function rotateClockwise() {
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].rotate(45);
 		getSelectionBounds();
-
+//Functions that have to do with recalculating the Bbox of items sometimes fail to do so therefore we need to do it manually.
+		updateSelectionState()
 	}
 	undo.snapshot("Cut");
 //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
@@ -316,7 +321,8 @@ function rotateCounterClockwise() {
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].rotate(-45);
 		getSelectionBounds();
-
+//Functions that have to do with recalculating the Bbox of items sometimes fail to do so therefore we need to do it manually.
+		updateSelectionState()
 	}
 	undo.snapshot("Cut");
 //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
