@@ -25,10 +25,8 @@ function placeImage() {
 //Not sure what to replace ''cut'' with in undo for these functions.
 window.onload = function() {
 		// Get a reference to the canvas object
-		
 		// Create an empty project and a view for the canvas:
 		paper.install(window);
-
 	};
 
 
@@ -39,6 +37,9 @@ function sendToBack() {
 		selected[i].sendToBack();
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 //Function that iterates over all ''Selected Elements'' and pushes them to the front.
@@ -49,6 +50,9 @@ function bringFrontMost() {
 		selected[i].bringToFront();
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 //Here we need to get the current index of the selected element in order to add +1 or substract -1 from the current index in order to move the selected in steps.
@@ -64,6 +68,9 @@ function bringFrontOne() {
 		console.log(selected[i].index);
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 
@@ -84,6 +91,9 @@ function sendBackOne() {
 	    }
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 
@@ -106,6 +116,9 @@ function setElementTypeMaterial() {
 		currentToolColor=cutColor;
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 //Function that sets the elementType as ''Hole''
@@ -119,6 +132,9 @@ function setElementTypeHole() {
 		currentToolColor=holeColor;
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 //Function that sets the elementType as ''Vector Engraving''
@@ -131,6 +147,9 @@ function setElementTypeVectorEngrave() {
 		currentToolColor=vectorEngraveColor;
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 //Function that sets the elementType as ''Raster Engraving''
@@ -144,6 +163,9 @@ function setElementTypeRasterEngrave() {
 		currentToolColor=rasterEngraveColor;
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 //Function that sets the selected element height. Because we cannot set the width/heights in absolute terms we sample what the current size and what the intended size
@@ -216,6 +238,9 @@ function flipHorizontally() {
 	 }
 
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 function flipVertically() {
@@ -229,6 +254,9 @@ function flipVertically() {
 	 }
 
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 
@@ -277,6 +305,9 @@ function rotateClockwise() {
 
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 
 function rotateCounterClockwise() {
@@ -288,6 +319,9 @@ function rotateCounterClockwise() {
 
 	}
 	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
 }
 //Function that hides the right tools when nothing is selected. Triggered by clicking on the canvas.
 
