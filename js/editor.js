@@ -1282,7 +1282,7 @@ toolZoomPan.on({
 	mousedown: function(event) {
 		this.mouseStartPos = event.point.subtract(paper.view.center);
 		this.mode = '';
-		if (event.modifiers.command) {
+		if (event.modifiers.control) {
 			this.mode = 'zoom';
 		} else {
 			setCanvasCursor('cursor-hand-grab');
@@ -1339,6 +1339,82 @@ toolZoomPan.on({
 		this.hitTest(event);
 	}
 });
+
+//UPSTREAM MODIFICATION BY nicholaswmin. The following is a new tool that is always-on. It allows the user to zoom via the mousewheel.
+//There are 2 values, upperZoomLimit/lowerZoomLimit that are being drawn in from the GlobalVariables.js file.
+
+var toolZoomIn = new paper.Tool();
+toolZoomIn.distanceThreshold = 8;
+toolZoomIn.mouseStartPos = new paper.Point();
+toolZoomIn.mode = 'pan';
+toolZoomIn.zoomFactor = 1.3;
+toolZoomIn.resetHot = function(type, event, mode) {
+};
+toolZoomIn.testHot = function(type, event, mode) {
+	
+};
+toolZoomIn.hitTest = function(event) {
+	
+	setCanvasCursor('cursor-zoom-in');
+		
+	return true;
+};
+toolZoomIn.on({
+
+	mouseup: function(event) {
+		this.mouseStartPos = event.point.subtract(paper.view.center);
+		console.log(this.name)
+		this.mode = '';
+		this.mode = 'zoom';
+		var zoomCenter = event.point.subtract(paper.view.center);
+		var moveFactor = this.zoomFactor - 1.0;
+		paper.view.zoom *= this.zoomFactor;
+		paper.view.center = paper.view.center.add(zoomCenter.multiply(moveFactor / this.zoomFactor));
+		this.hitTest(event);
+		this.mode = '';
+	},
+	
+	mousemove: function(event) {
+		this.hitTest(event);
+	}
+});
+
+$(document).ready(function(e) {
+
+$('#canvas').bind('mousewheel DOMMouseScroll MozMousePixelScroll', function(e){
+        var delta = 0;
+        e.preventDefault();
+        e = e || window.event;
+        if (e.type == 'mousewheel') {       //this is for chrome/IE
+                delta = e.originalEvent.wheelDelta;
+            }
+            else if (e.type == 'DOMMouseScroll') {  //this is for FireFox
+                delta = e.originalEvent.detail*-1;  //FireFox reverses the scroll so we force to to re-reverse...
+            }
+        if((delta > 0) && (paper.view.zoom<upperZoomLimit)) {   //scroll up
+        	 var point = paper.DomEvent.getOffset(e.originalEvent, $('#canvas')[0]);
+        	point = paper.view.viewToProject(point);
+        	var zoomCenter = point.subtract(paper.view.center);
+	        var moveFactor = toolZoomIn.zoomFactor - 1.0;
+		    paper.view.zoom *= toolZoomIn.zoomFactor;
+		    paper.view.center = paper.view.center.add(zoomCenter.multiply(moveFactor / toolZoomIn.zoomFactor));
+		    toolZoomIn.hitTest(e);
+		    toolZoomIn.mode = '';
+        }
+
+        else if((delta < 0) && (paper.view.zoom>lowerZoomLimit)){ //scroll down
+             var point = paper.DomEvent.getOffset(e.originalEvent, $('#canvas')[0]);
+        	point = paper.view.viewToProject(point);
+        	var zoomCenter = point.subtract(paper.view.center);   
+        	var moveFactor = toolZoomIn.zoomFactor - 1.0;
+            paper.view.zoom /= toolZoomIn.zoomFactor;
+		    paper.view.center = paper.view.center.subtract(zoomCenter.multiply(moveFactor))
+        }
+    });
+
+ });
+
+//End of mousewheel Zoom Tool by nicholaswmin
 
 var toolPen = new paper.Tool();
 toolPen.pathId = -1;
@@ -1504,6 +1580,7 @@ toolPen.on({
 				//specified by the ext-globalVariables.js file. It allows the user to draw elementType's based on their currently selected tool.
 				//Also added some transparency to help the user see elements hiding behind other elements
 				path.fillColor = currentToolColor;
+				path.opacity = defaultToolOpacity;
 				path.strokeColor = 'black';
 				this.pathId = path.id;
 			
