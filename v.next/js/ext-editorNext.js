@@ -1,11 +1,184 @@
 // Additional Functionality added by ''Nicholas Kyriakides''. 
 
-//Let's disable the right click context menu for the canvas
 
 $( document ).ready(function() {
 	paper.install(window);
-	$('body').on('contextmenu', '#canvas', function(e){ return false; });
+//Disable right-click context menu on canvas
+$('body').on('contextmenu', '#canvas', function(e){ return false; });
+//Hide right toolbar on loading the app
+$('#tools_right').hide();
+//numeric is a JS plugin that dissalows the user from typing anything other than numbers in the width/height/x/y textfields
+$("#elementXPosition,#elementYPosition,#elementWidth,#elementHeight").numeric();
+
+//The following path is added at startup of the editor. It's supposed to represent the material size selected by the user
+//which is used for showing the users where to concentrate his elements. The boolOp/3D algorithms use this for the cutting rectangle.
+//The user is allowed to draw outside his rectangle but whatever is outside this rectangle is ''clipped'' by the BoolOp/3D algos.
+//We need to find a way to make this rectangle non-selectable by the user, similar to pointer-events:none of SVG.
+
+var path2 = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
+	path2.strokeColor ='black';
+
+//The following functions are the triggers for the additional functionality added in this file. They ''glue'' together the buttons from the HTML file and the 
+//additional functionality in this file.
+
+    $("#tool-expertMode").click(function() {
+		expertMode();
+	});
+
+    $("#tool-placeImage").click(function() {
+		placeImage();
+	});
+
+    $("#tool-material").click(function() {
+		setElementTypeMaterial();
+	});
+
+	$("#tool-hole").click(function() {
+		setElementTypeHole();
+	});
+
+	$("#tool-vectorEngrave").click(function() {
+		setElementTypeVectorEngrave();
+	});
+
+	$("#tool-rasterEngrave").click(function() {
+		setElementTypeRasterEngrave();
+	});
+
+    $("#tool-sendToBack").click(function() {
+		sendToBack();
+	});
+
+	$("#tool-bringFrontMost").click(function() {
+		bringFrontMost();
+	});
+
+	$("#tool-sendBackOne").click(function() {
+		tool-sendBackOne();
+	});
+
+	$("#tool-bringFrontOne").click(function() {
+		bringFrontOne();
+	});
+
+	$("#toolRotateClockwise").click(function() {
+		rotateClockwise();
+	});
+
+	$("#toolRotateCounterClockwise").click(function() {
+		rotateCounterClockwise();
+	});
+
+	$("#toolFlipHorizontally").click(function() {
+		flipHorizontally();
+	});
+
+	$("#toolFlipVertically").click(function() {
+		flipVertically();
+	});
+
+
+	$("#toolFullScreen").click(function() {
+		goFullScreen();
+	});
+
+	$("#toolExportSVG").click(function() {
+		prepareSVGExport();
+	});
+
+
+//The following functions are triggered on an ''onChange'' event. The same functions are triggered when pressing ''ENTER'' key while typing. See section below this
+//snippet
+	$("#elementHeight").change(function() {
+		setElementHeight();
+	});
+
+	$("#elementWidth").change(function() {
+		setElementWidth();
+	});
+
+		$("#elementYPosition").change(function() {
+		setElementYPosition();
+	});
+
+		$("#elementXPosition").change(function() {
+		setElementXPosition();
+	});
+
+		$("#canvas").click(function() {
+				hideRightTools();
+
+	});
+
+//Here the previous functions are also triggered on pressing ''ENTER'' key while typing. Keycode 13 is the ''ENTER'' key
+document.getElementById('elementHeight').onkeydown = function(event) {
+    if (event.keyCode == 13) {
+      setElementHeight();
+    }
+};
+
+document.getElementById('elementWidth').onkeydown = function(event) {
+    if (event.keyCode == 13) {
+      setElementWidth();
+    }
+};
+document.getElementById('elementYPosition').onkeydown = function(event) {
+    if (event.keyCode == 13) {
+      setElementYPosition();
+    }
+};
+document.getElementById('elementXPosition').onkeydown = function(event) {
+    if (event.keyCode == 13) {
+      setElementXPosition();
+    }
+};
+
+
+$('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').click(function () {
+    this.select();
+
+
 });
+
+
+function expertMode(){
+
+	var children = project.activeLayer.children;
+
+     for (var i = 0; i < children.length; i++) {
+	  var child = children[i];
+	  console.log(child.fillColor);
+
+	   if (child.fillColor===null) {
+	   	currentToolColor = cutColor;
+	    switch (child.name) {
+	    
+	    case 'material': 
+	    child.fillColor = cutColor;
+	    break;
+ 
+	    case "hole": 
+	    child.fillColor = holeColor;
+	    break;
+
+	    case "vectorEngrave" :
+	    child.fillColor = vectorEngraveColor;
+	    break;
+
+	    case "rasterEngrave" : 
+        child.fillColor = rasterEngraveColor;
+	    break;
+        }
+
+	   }
+	   else {
+	   child.fillColor = null;
+	   expertModeOn = true;
+	   currentToolColor = null;
+	   }
+
+     }
+}
 
 //The function below allows the user to place a Raster Image on the canvas(he might want to trace over it with a path).
 
@@ -97,23 +270,23 @@ function sendBackOne() {
 }
 
 
-//The BoolOps/3D algorithms that are supposed to be plugged in later identify ''Material/Holes/Raster Engravings/Vector Engravings'' by their HTML colors. 
-// So we need to ''illuminate'' each element on the canvas with it's respective HTML color. The HTML colors also help the user know what elementType he is currently
-//using
+//The BoolOps/3D algorithms that are supposed to be plugged in later identify ''Material/Holes/Raster Engravings/Vector Engravings'' by their ''name''. Paper allows us to set a name property
+//for items which is Paper converts to the ID when exporting in SVG.
 
-// The elementType functions get their respective HTML colors from the ext-globalVariables.js file, since these are the startup settings variables.
-// Also each elementType functions sets a variable in that file with the HTML color so next time the user draws a path, it's drawn with the currently
-//selected elementType HTML color. 
+//However the user identifies each type of element by their fill color. 
+//Therefore we need to set the currentToolName, the currentToolColor in ext-GlobalVariables, and ALSO convert all selected items to the respective element type.
 
 
 //Function that sets the elementType as ''Material''
 function setElementTypeMaterial() {
 	clipboard = captureSelectionState();
+	currentToolColor=cutColor;
+	currentToolName = "material";
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].fillColor= cutColor;
 		selected[i].opacity= 0.5;
-		currentToolColor=cutColor;
+		selected[i].name = "material";
 	}
 	undo.snapshot("Cut");
 //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
@@ -125,11 +298,13 @@ function setElementTypeMaterial() {
 
 function setElementTypeHole() {
 	clipboard = captureSelectionState();
+	currentToolColor=holeColor;
+	currentToolName = "hole";
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].fillColor= holeColor;
 		selected[i].opacity= 0.5;
-		currentToolColor=holeColor;
+		selected[i].name = "hole";
 	}
 	undo.snapshot("Cut");
 //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
@@ -140,11 +315,13 @@ function setElementTypeHole() {
 //Function that sets the elementType as ''Vector Engraving''
 function setElementTypeVectorEngrave() {
 	clipboard = captureSelectionState();
+	currentToolColor=vectorEngraveColor;
+	currentToolName = "vectorEngrave";
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].fillColor= vectorEngraveColor;
 		selected[i].opacity= 0.5;
-		currentToolColor=vectorEngraveColor;
+		selected[i].name = "vectorEngrave";
 	}
 	undo.snapshot("Cut");
 //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
@@ -155,12 +332,14 @@ function setElementTypeVectorEngrave() {
 //Function that sets the elementType as ''Raster Engraving''
 
 function setElementTypeRasterEngrave() {
+	currentToolColor=rasterEngraveColor;
+	currentToolName = "rasterEngrave";
 	clipboard = captureSelectionState();
 	var selected = paper.project.selectedItems;
 	for (var i = 0; i < selected.length; i++) {
 		selected[i].fillColor= rasterEngraveColor;
 		selected[i].opacity= 0.5;
-		currentToolColor=rasterEngraveColor;
+		selected[i].name = "rasterEngrave";
 	}
 	undo.snapshot("Cut");
 //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
@@ -281,8 +460,6 @@ function setElementXPosition() {
 	undo.snapshot("Cut");
 }
 	
-
-
 function setElementYPosition() {
 
 	clipboard = captureSelectionState();
@@ -339,7 +516,6 @@ function hideRightTools(){
 	}
 }
 
-
 function goFullScreen() {
 	  var
           el = document.documentElement
@@ -353,156 +529,12 @@ function goFullScreen() {
     rfs.call(el);
 }
 
-
 function prepareSVGExport(){
 
 var svg = paper.project.exportSVG();
 console.log(svg);
 }
 
-
-
-//Function that prevents the user from typing anything ELSE than NUMBERS in the x/y width/height input fields in the HTML file. Uses ''numeric.js'' file.
-
-$(document).ready(function() {
-
-$('#tools_right').hide();
-
-
-$("#elementXPosition,#elementYPosition,#elementWidth,#elementHeight").numeric();
-});
-
-$(document).ready(function() {
-
-//The following path is added at startup of the editor. It's supposed to represent the material size selected by the user
-//which is used for showing the users where to concentrate his elements. The boolOp/3D algorithms use this for the cutting rectangle.
-//The user is allowed to draw outside his rectangle but whatever is outside this rectangle is ''clipped'' by the BoolOp/3D algos.
-//We need to find a way to make this rectangle non-selectable by the user, similar to pointer-events:none of SVG.
-
-var path2 = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
-	path2.strokeColor ='black';
-
-//The following functions are the triggers for the additional functionality added in this file. They ''glue'' together the buttons from the HTML file and the 
-//additional functionality in this file.
-
-    $("#tool-placeImage").click(function() {
-		placeImage();
-	});
-
-    $("#tool-material").click(function() {
-		setElementTypeMaterial();
-	});
-
-	$("#tool-hole").click(function() {
-		setElementTypeHole();
-	});
-
-	$("#tool-vectorEngrave").click(function() {
-		setElementTypeVectorEngrave();
-	});
-
-	$("#tool-rasterEngrave").click(function() {
-		setElementTypeRasterEngrave();
-	});
-
-
-    $("#tool-sendToBack").click(function() {
-		sendToBack();
-	});
-
-	$("#tool-bringFrontMost").click(function() {
-		bringFrontMost();
-	});
-
-	$("#tool-sendBackOne").click(function() {
-		tool-sendBackOne();
-	});
-
-	$("#tool-bringFrontOne").click(function() {
-		bringFrontOne();
-	});
-
-	$("#toolRotateClockwise").click(function() {
-		rotateClockwise();
-	});
-
-	$("#toolRotateCounterClockwise").click(function() {
-		rotateCounterClockwise();
-	});
-
-	$("#toolFlipHorizontally").click(function() {
-		flipHorizontally();
-	});
-
-	$("#toolFlipVertically").click(function() {
-		flipVertically();
-	});
-
-
-	$("#toolFullScreen").click(function() {
-		goFullScreen();
-	});
-
-	$("#toolExportSVG").click(function() {
-		prepareSVGExport();
-	});
-
-
-
-
-
-//The following functions are triggered on an ''onChange'' event. The same functions are triggered when pressing ''ENTER'' key while typing. See section below this
-//snippet
-	$("#elementHeight").change(function() {
-		setElementHeight();
-	});
-
-	$("#elementWidth").change(function() {
-		setElementWidth();
-	});
-
-		$("#elementYPosition").change(function() {
-		setElementYPosition();
-	});
-
-		$("#elementXPosition").change(function() {
-		setElementXPosition();
-	});
-
-
-
-			$("#canvas").click(function() {
-				hideRightTools();
-
-	});
-
-//Here the previous functions are also triggered on pressing ''ENTER'' key while typing. Keycode 13 is the ''ENTER'' key
-document.getElementById('elementHeight').onkeydown = function(event) {
-    if (event.keyCode == 13) {
-      setElementHeight();
-    }
-};
-
-document.getElementById('elementWidth').onkeydown = function(event) {
-    if (event.keyCode == 13) {
-      setElementWidth();
-    }
-};
-document.getElementById('elementYPosition').onkeydown = function(event) {
-    if (event.keyCode == 13) {
-      setElementYPosition();
-    }
-};
-document.getElementById('elementXPosition').onkeydown = function(event) {
-    if (event.keyCode == 13) {
-      setElementXPosition();
-    }
-};
-
-
-$('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').click(function () {
-    this.select();
-});
 
 //Keybidings for various things
 
@@ -556,3 +588,97 @@ $(document).keydown(function(e){
 
 
 });
+
+
+
+//The Zoom Tool
+
+//There are 2 values, upperZoomLimit/lowerZoomLimit that are being drawn in from the GlobalVariables.js file.
+
+var toolZoomIn = new paper.Tool();
+toolZoomIn.distanceThreshold = 8;
+toolZoomIn.mouseStartPos = new paper.Point();
+toolZoomIn.mode = 'pan';
+toolZoomIn.zoomFactor = 1.3;
+toolZoomIn.resetHot = function(type, event, mode) {
+};
+toolZoomIn.testHot = function(type, event, mode) {
+	
+};
+toolZoomIn.hitTest = function(event) {
+	
+	setCanvasCursor('cursor-zoom-in');
+		
+	return true;
+};
+toolZoomIn.on({
+
+	mouseup: function(event) {
+		this.mouseStartPos = event.point.subtract(paper.view.center);
+		console.log(this.name)
+		this.mode = '';
+		this.mode = 'zoom';
+		var zoomCenter = event.point.subtract(paper.view.center);
+		var moveFactor = this.zoomFactor - 1.0;
+		paper.view.zoom *= this.zoomFactor;
+		paper.view.center = paper.view.center.add(zoomCenter.multiply(moveFactor / this.zoomFactor));
+		this.hitTest(event);
+		this.mode = '';
+	},
+	
+	mousemove: function(event) {
+		this.hitTest(event);
+	}
+});
+
+$(document).ready(function(e) {
+
+$('#canvas').bind('mousewheel DOMMouseScroll MozMousePixelScroll', function(e){
+        var delta = 0;
+        var children = project.activeLayer.children;
+        e.preventDefault();
+        e = e || window.event;
+        if (e.type == 'mousewheel') {       //this is for chrome/IE
+                delta = e.originalEvent.wheelDelta;
+            }
+            else if (e.type == 'DOMMouseScroll') {  //this is for FireFox
+                delta = e.originalEvent.detail*-1;  //FireFox reverses the scroll so we force to to re-reverse...
+            }
+        if((delta > 0) && (paper.view.zoom<upperZoomLimit)) {   //scroll up
+        	 var point = paper.DomEvent.getOffset(e.originalEvent, $('#canvas')[0]);
+        	point = paper.view.viewToProject(point);
+        	var zoomCenter = point.subtract(paper.view.center);
+	        var moveFactor = toolZoomIn.zoomFactor - 1.0;
+		    paper.view.zoom *= toolZoomIn.zoomFactor;
+		    paper.view.center = paper.view.center.add(zoomCenter.multiply(moveFactor / toolZoomIn.zoomFactor));
+		    toolZoomIn.hitTest(e);
+		    toolZoomIn.mode = '';
+
+		    //get all elements and divide their stroke widths by the current zoom level to create hairline stroke
+            for (var i = 0; i < children.length; i++) {
+	        var child = children[i];
+	        child.strokeWidth = 1 / paper.view.zoom;
+	        view.update();
+	    }
+        }
+
+        else if((delta < 0) && (paper.view.zoom>lowerZoomLimit)){ //scroll down
+             var point = paper.DomEvent.getOffset(e.originalEvent, $('#canvas')[0]);
+        	point = paper.view.viewToProject(point);
+        	var zoomCenter = point.subtract(paper.view.center);   
+        	var moveFactor = toolZoomIn.zoomFactor - 1.0;
+            paper.view.zoom /= toolZoomIn.zoomFactor;
+		    paper.view.center = paper.view.center.subtract(zoomCenter.multiply(moveFactor))
+
+		    //get all elements and divide their stroke widths by the current zoom level to create hairline stroke
+            for (var i = 0; i < children.length; i++) {
+	        var child = children[i];
+	        child.strokeWidth = 1 / paper.view.zoom;
+	        view.update();
+	    }
+        }
+    });
+
+ });
+
+//End of mousewheel Zoom Tool by nicholaswmin

@@ -1307,6 +1307,13 @@ toolZoomPan.on({
 			var dx = paper.view.bounds.width / Math.abs(end.x - start.x);
 			var dy = paper.view.bounds.height / Math.abs(end.y - start.y);
 			paper.view.zoom = Math.min(dx, dy) * paper.view.zoom;
+//UPSTREAM MODIFICATION BY nicholaswmin -- the following 4-5 lines are triggered upon completion of the zoom rect and they are meant to scale the stroke/divide by zoom level.
+//This implements the non-scaling stroke
+			var children = project.activeLayer.children;
+		    for (var i = 0; i < children.length; i++) {
+	        var child = children[i];
+	        child.strokeWidth = 1 / paper.view.zoom;
+	        }
 		}
 		this.hitTest(event);
 		this.mode = '';
@@ -1340,81 +1347,7 @@ toolZoomPan.on({
 	}
 });
 
-//UPSTREAM MODIFICATION BY nicholaswmin. The following is a new tool that is always-on. It allows the user to zoom via the mousewheel.
-//There are 2 values, upperZoomLimit/lowerZoomLimit that are being drawn in from the GlobalVariables.js file.
 
-var toolZoomIn = new paper.Tool();
-toolZoomIn.distanceThreshold = 8;
-toolZoomIn.mouseStartPos = new paper.Point();
-toolZoomIn.mode = 'pan';
-toolZoomIn.zoomFactor = 1.3;
-toolZoomIn.resetHot = function(type, event, mode) {
-};
-toolZoomIn.testHot = function(type, event, mode) {
-	
-};
-toolZoomIn.hitTest = function(event) {
-	
-	setCanvasCursor('cursor-zoom-in');
-		
-	return true;
-};
-toolZoomIn.on({
-
-	mouseup: function(event) {
-		this.mouseStartPos = event.point.subtract(paper.view.center);
-		console.log(this.name)
-		this.mode = '';
-		this.mode = 'zoom';
-		var zoomCenter = event.point.subtract(paper.view.center);
-		var moveFactor = this.zoomFactor - 1.0;
-		paper.view.zoom *= this.zoomFactor;
-		paper.view.center = paper.view.center.add(zoomCenter.multiply(moveFactor / this.zoomFactor));
-		this.hitTest(event);
-		this.mode = '';
-	},
-	
-	mousemove: function(event) {
-		this.hitTest(event);
-	}
-});
-
-$(document).ready(function(e) {
-
-$('#canvas').bind('mousewheel DOMMouseScroll MozMousePixelScroll', function(e){
-        var delta = 0;
-        e.preventDefault();
-        e = e || window.event;
-        if (e.type == 'mousewheel') {       //this is for chrome/IE
-                delta = e.originalEvent.wheelDelta;
-            }
-            else if (e.type == 'DOMMouseScroll') {  //this is for FireFox
-                delta = e.originalEvent.detail*-1;  //FireFox reverses the scroll so we force to to re-reverse...
-            }
-        if((delta > 0) && (paper.view.zoom<upperZoomLimit)) {   //scroll up
-        	 var point = paper.DomEvent.getOffset(e.originalEvent, $('#canvas')[0]);
-        	point = paper.view.viewToProject(point);
-        	var zoomCenter = point.subtract(paper.view.center);
-	        var moveFactor = toolZoomIn.zoomFactor - 1.0;
-		    paper.view.zoom *= toolZoomIn.zoomFactor;
-		    paper.view.center = paper.view.center.add(zoomCenter.multiply(moveFactor / toolZoomIn.zoomFactor));
-		    toolZoomIn.hitTest(e);
-		    toolZoomIn.mode = '';
-        }
-
-        else if((delta < 0) && (paper.view.zoom>lowerZoomLimit)){ //scroll down
-             var point = paper.DomEvent.getOffset(e.originalEvent, $('#canvas')[0]);
-        	point = paper.view.viewToProject(point);
-        	var zoomCenter = point.subtract(paper.view.center);   
-        	var moveFactor = toolZoomIn.zoomFactor - 1.0;
-            paper.view.zoom /= toolZoomIn.zoomFactor;
-		    paper.view.center = paper.view.center.subtract(zoomCenter.multiply(moveFactor))
-        }
-    });
-
- });
-
-//End of mousewheel Zoom Tool by nicholaswmin
 
 var toolPen = new paper.Tool();
 toolPen.pathId = -1;
@@ -1575,15 +1508,16 @@ toolPen.on({
 			if (path == null) {
 				deselectAll();
 				path = new paper.Path();
-
-				//UPSTREAM Modification by ''nicholaswmin''. I added a path.fill color variable that paints the path to the color
+//UPSTREAM Modification by ''nicholaswmin''. I added a path.fill color variable that paints the path to the color
 				//specified by the ext-globalVariables.js file. It allows the user to draw elementType's based on their currently selected tool.
 				//Also added some transparency to help the user see elements hiding behind other elements
 				path.fillColor = currentToolColor;
 				path.opacity = defaultToolOpacity;
-				path.strokeColor = 'black';
+// Division of the strokeWidth by the zoom level ensures a hairline stroke irregardless of zoom level
+				path.strokeWidth = 1 / paper.view.zoom;
+				path.strokeColor = 'red';
+				path.name = currentToolName;
 				this.pathId = path.id;
-			
 			}
 			this.currentSegment = path.add(event.point);
 
