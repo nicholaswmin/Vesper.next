@@ -11,7 +11,8 @@
 	<script type="text/javascript" src="js/editor.js"></script>
 
 	<!--Start adding non-upstream files -->
-    <script src="v.next/css/bootstrap/js/bootstrap.js"></script>
+    <script src="v.next/assets/bootstrap/js/bootstrap.js"></script>
+    <script src="v.next/assets/slider/js/bootstrap-slider.js"></script>
 	<!--This file is used for the startup settings of the app plus some more.  -->
 	<script type="text/javascript" src="v.next/js/ext-globalVariables.js"></script>
 	<!--The non-upstream editor.js extension that adds the additional functionality.  -->
@@ -26,7 +27,8 @@
 	<!--The non-upstream style.css extension that adds the additional functionality.  -->
 	<link rel="stylesheet" href="v.next/css/ext-styleNext.css">
 	<!--The BootStrap File.  -->
-	<link rel="stylesheet" href="v.next/css/bootstrap/css/bootstrap.css">
+	<link rel="stylesheet" href="v.next/assets/bootstrap/css/bootstrap.css">
+	<link rel="stylesheet" href="v.next/assets/slider/css/slider.css">
 
 
 </head>
@@ -36,6 +38,23 @@
 		<li id="undo" class="button"><img title="Undo" src="img/undo.png" /></li>
 		<li id="redo" class="button"><img title="Redo" src="img/redo.png" /></li>
 	</ul>
+
+	<!-- Split button -->
+    <div id="tools_fileMenu">
+     <div class="btn-group">
+      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal" >Trace Image</button>
+      <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+      <span class="caret"></span>
+      <span class="sr-only">Toggle Dropdown</span>
+      </button>
+      <ul class="dropdown-menu" role="menu">
+       <li><input type="file" id="tool-placeImageFileDropdown" name="tool-placeImageFileDropdown[]" multiple/></a></li>
+       <li><a href="#"  id="tool-placeImageUrlDropdown" >External URL</a></li>
+       <li class="divider"></li>
+       <li><a href="#">Help</a></li>
+      </ul>
+     </div>
+    </div>
 
     <ul id="tools_top">
 		<li id="toolFullScreen" class="button"><img title="Full Screen" src="img/fullScreen.png" /></li>
@@ -48,6 +67,7 @@
 		<li id="tool-direct-select" class="button"><img title="Edit Points" src="img/icon-arrow-white.png" /></li>
 		<li id="tool-pen" class="button"><img title="Draw Shape" src="img/icon-pen.png" /></li>
 	</ul>
+
  
     <!--ElementType buttons that allow the user to draw and illuminate elements on the canvas as either ''Materials, Holes, Vector Engravings,Raster Engravings''-->
     <ul id="tools_elementType">
@@ -55,7 +75,6 @@
 		<li id="tool-hole" class="button"><img title="Punch Hole" src="img/elementHole.png" /></li>
 		<li id="tool-rasterEngrave" class="button"><img title="Raster Engrave" src="img/elementRasterEngrave.png" /></li>
 		<li id="tool-vectorEngrave" class="button"><img title="Line Engrave" src="img/elementVectorEngrave.png" /></li>
-		<li id="tool-placeImage" class="button"><img title="Trace Image" src="img/traceImage.png" /></li>
 		<li id="tool-expertMode" class="button"><img title="Expert Mode(no fills)" src="img/expertMode.png" /></li>
 	</ul>
 
@@ -79,7 +98,39 @@
 		<li id="toolRotateCounterClockwise" class="button"><img title="Rotate counter-clockwise 45 " src="img/rotateCounterClockwise.png" /></li>
 		<li id="toolFlipHorizontally" class="button"><img title="Flip Horizontally" src="img/FlipVertically.png" /></li>
 		<li id="toolFlipVertically" class="button"><img title="Flip Vertically" src="img/flipHorizontally.png" /></li>
+		<li id="tool-smoothPath" class="button"><img title="Smooth Path/Reduce Nodes" src="img/smoothPath.png" /></li>
 	</ul>
+
+	<!--Place Image Modal window that allows to choose between uploading an image to the app or choosing an external image URL-->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+    <div class="modal-content">
+    <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+    <h4 class="modal-title" id="myModalLabel">Upload an Image</h4>
+    </div>
+    <div class="modal-body">
+    You can UPLOAD a file from your hard-drive OR you can paste in an image URL probably from Google. 
+    </div>
+    <div class="modal-footer">
+    <input type="file" id="tool-placeImageFileModal" name="filesModal[]" multiple />
+    <button id="tool-placeImageUrlModal" type="button" class="btn btn-primary">Paste URL</button>
+    </div>
+    </div>
+    </div>
+    </div>
+    
+    <div id="alertBox" class="alert alert-danger" >
+    <strong>Oh Snap!</strong> That was not an image file my man.
+    </div>
+
+    <div id="smoothSliderDiv">
+    <ul>
+    <li><input id="smoothSlider" data-slider-id='smoothSlider1' type="text" data-slider-min="0" data-slider-max="10" data-slider-step="1" data-slider-value="0"/></li>
+    <li style="list-style: none; padding: 0; margin:0;"> Tolerance </li>
+    </ul>
+    </div>
+
 	<canvas id="canvas" resize></canvas>
 </body>
 <!--The following image is used as a container for placing a Raster on the canvas since paper.Raster requires that we use the id of an image tag to load an image. The source is empty because
