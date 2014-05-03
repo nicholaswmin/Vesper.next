@@ -547,7 +547,9 @@ function getPathsIntersectingRect(rect) {
 //UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
 //therefore we halt it's selection by returning. We check for the item's className and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
 
-		if (item.className === "Raster") {
+//There is also a check whether the item name is drawing area which is the rectangle in which the user must concetrate his drawings in. Drawing area cannot be selected in any way.
+
+		if (item.className === "Raster" ||	item.name === "drawingArea") {
 			return;
 		}
 
@@ -596,6 +598,18 @@ function getSelectionBounds() {
 		    document.getElementById('elementYPosition').value =(bounds["y"].toFixed(2));
 		    document.getElementById('elementWidth').value =(bounds["width"].toFixed(2));
 		    document.getElementById('elementHeight').value =(bounds["height"].toFixed(2));
+
+		//UPSTREAM Modification by ''nicholaswmin''. The following conditional checks whether more than one item is selected OR if the selection is a Raster
+		//E.g the path smoother should only work on single selections that are NOT rasters.
+
+		    if (selected.length > 1 || selected[0].className === "Raster") 
+		     {
+		     	$( "#tool-smoothPath" ).last().addClass( "disable" );
+		     }
+		     else
+		     {
+		     	$( "#tool-smoothPath" ).last().removeClass( "disable" );
+		     }
 	}
 	return bounds;
 }

@@ -78,3 +78,11 @@ can be remedied by minimizing and remaximizing the browser window. That's weird.
 	box-shadow: 0px 3px 6px rgba(0,0,0,0.4);
 	z-index: 0;
 }
+
+/*The original classes for the button are included in the original upstream file. This is simply an extension. This is generally used to disable buttons but keep the visible. E.g the path 
+smoother is disabled when more than 1 item is disabled*/
+
+.button.disable {
+	background: #686868;
+	pointer-events:none;
+}
