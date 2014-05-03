@@ -600,15 +600,15 @@ function getSelectionBounds() {
 		    document.getElementById('elementHeight').value =(bounds["height"].toFixed(2));
 
 		//UPSTREAM Modification by ''nicholaswmin''. The following conditional checks whether more than one item is selected OR if the selection is a Raster
-		//E.g the path smoother should only work on single selections that are NOT rasters.
+		//E.g the path simplifier should only work on single selections that are NOT rasters.
 
 		    if (selected.length > 1 || selected[0].className === "Raster") 
 		     {
-		     	$( "#tool-smoothPath" ).last().addClass( "disable" );
+		     	$( "#tool-simplifyPath" ).last().addClass( "disable" );
 		     }
 		     else
 		     {
-		     	$( "#tool-smoothPath" ).last().removeClass( "disable" );
+		     	$( "#tool-simplifyPath" ).last().removeClass( "disable" );
 		     }
 	}
 	return bounds;

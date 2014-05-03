@@ -1,6 +1,6 @@
 //Global variables used for startup-settings of the app. I know globals are a bad way so this must be remedied in the future.
 
-var materialWidth=800;
+var materialWidth=500;
 var materialHeight=500;
 
 var cutColor="#3498db";

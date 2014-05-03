@@ -1,13 +1,13 @@
 /*For some reason, splitting here the non-upstream CSS from the upstream file generates a stupid white bar in the bottom of the Chrome Canary browser which
 can be remedied by minimizing and remaximizing the browser window. That's weird. */
 
-#smoothSliderDiv  {
+#simplifySliderDiv  {
 	position: fixed;
 	left: 930px;
 	top: 462px;
 }
 
-#smoothSlider1  {
+#simplifySlider1  {
 	position: fixed;
 	left: 930px;
 	top: 462px;
@@ -80,7 +80,7 @@ can be remedied by minimizing and remaximizing the browser window. That's weird.
 }
 
 /*The original classes for the button are included in the original upstream file. This is simply an extension. This is generally used to disable buttons but keep the visible. E.g the path 
-smoother is disabled when more than 1 item is disabled*/
+simplifier is disabled when more than 1 item is disabled*/
 
 .button.disable {
 	background: #686868;

@@ -12,11 +12,11 @@ $("#elementXPosition,#elementYPosition,#elementWidth,#elementHeight").numeric();
 //Hide the alertBox
 $('#alertBox').hide();
 
-//Initialize Slider for path-smoothing
-$('#smoothSlider').slider();
+//Initialize Slider for path-simplifier
+$('#simplifySlider').slider();
 
 //Hide the Slider
-$('#smoothSliderDiv').hide();
+$('#simplifySliderDiv').hide();
 //The following path is added at startup of the editor. It's supposed to represent the material size selected by the user
 //which is used for showing the users where to concentrate his elements. The boolOp/3D algorithms use this for the cutting rectangle.
 //The user is allowed to draw outside his rectangle but whatever is outside this rectangle is ''clipped'' by the BoolOp/3D algos.
@@ -100,7 +100,11 @@ var drawingArea = new paper.Path.Rectangle(new paper.Point(100, 100), materialWi
 		prepareSVGExport();
 	});
 
-    $("#tool-smoothPath").click(function() {
+    $("#tool-simplifyPath").click(function() {
+		simplifyPath();
+	});
+
+	 $("#tool-smoothPath").click(function() {
 		smoothPath();
 	});
 
@@ -159,9 +163,9 @@ $('#elementXPosition,#elementYPosition,#elementWidth,#elementHeight').click(func
 
 });
 
-//Trigger function on smoothing Slider. .
+//Trigger function on simplifier Slider. .
 //On each increment the function checks whether a clone of the selected path exists. If it exists it deletes the clone and creates a new one with the current slider value
-//This allows the user to drag the slider up/down with the effects of the slider applying on the original path form instead of the effects applying on the previous smoothing.
+//This allows the user to drag the slider up/down with the effects of the slider applying on the original path form instead of the effects applying on the previous simplification.
 //The function checks which clone relates to which original path. This prevents the deletion of unrelated clones of other paths when moving the slider.
 
 //The object below is holds the clone of the path and its associated id. We need the associatedId otherwise we would be unable to know which clone relates to which selected path.
@@ -172,7 +176,7 @@ var copy = {
     associatedId : 13294812938491283423
 };
 
-$('#smoothSlider').on('slide', function (ev) {
+$('#simplifySlider').on('slide', function (ev) {
    clipboard = captureSelectionState();
    var selected = paper.project.selectedItems;
    if (copy.associatedClone === "noClone") {
@@ -189,11 +193,26 @@ else
 	console.log("non-associated id");
 }
    }
-   var value = ($('#smoothSlider').val());
+   var value = ($('#simplifySlider').val());
    copy.associatedClone = selected[0].clone();
    copy.associatedClone.simplify(value);
    copy.associatedId = selected[0].id;
     });
+
+
+function smoothPath(){
+
+	clipboard = captureSelectionState();
+	var selected = paper.project.selectedItems;
+	for (var i = 0; i < selected.length; i++) {
+		if (selected[i].name === "boundingBoxRect") continue;
+		selected[i].smooth();
+	}
+	undo.snapshot("Cut");
+//IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
+//firing a function.
+	view.update();
+}
 
 
 function expertMode(){
@@ -336,9 +355,9 @@ function sendToBack() {
 }
 
 
-function smoothPath() {
-	$('#smoothSliderDiv').toggle();
-	$('#smoothSlider').slider('setValue', 0);
+function simplifyPath() {
+	$('#simplifySliderDiv').toggle();
+	$('#simplifySlider').slider('setValue', 0);
 }
 
 //Function that iterates over all ''Selected Elements'' and pushes them to the front.
@@ -638,8 +657,8 @@ function hideRightTools(){
 	var selected = paper.project.selectedItems;
 	if (selected.length<1){
 		$('#tools_right').hide();
-		$('#smoothSliderDiv').hide();
-		$('#smoothSlider').slider('setValue', 0);
+		$('#simplifySliderDiv').hide();
+		$('#simplifySlider').slider('setValue', 0);
 
 
 	}
