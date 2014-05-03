@@ -22,11 +22,6 @@ $('#simplifySliderDiv').hide();
 //The user is allowed to draw outside his rectangle but whatever is outside this rectangle is ''clipped'' by the BoolOp/3D algos.
 //We need to find a way to make this rectangle non-selectable by the user, similar to pointer-events:none of SVG.
 
-var drawingArea = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
-	drawingArea.strokeColor ='black';
-//Lock the drawing area so it doesn't respond to hit events. Also excluded from the intersection test in editor.js
-    drawingArea.locked=true;
-    drawingArea.name = "drawingArea";
 
 //The following functions are the triggers for the additional functionality added in this file. They ''glue'' together the buttons from the HTML file and the 
 //additional functionality in this file.

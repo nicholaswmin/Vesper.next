@@ -1848,11 +1848,19 @@ $(document).ready(function() {
     
     //UPSTREAM MODIFICATION by "nicholaswmin"
     //I removed the following 2 paths since they are used in the initial ''Stylii'' editor as example shapes placed on the canvas on startup.
-    //Utterly useless.
+    //Utterly useless. 
     //var path1 = new paper.Path.Circle(new paper.Point(180, 50), 30);
     //path1.strokeColor = 'black';
     //var path2 = new paper.Path.Circle(new paper.Point(180, 150), 20);
     //path2.fillColor = 'grey';
+
+    //Adding a new pre-defined shape which I will call the drawingArea. Cannot add this to editorNext.js since the undo.snapshot(init) does not work there.
+
+    var drawingArea = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
+	drawingArea.strokeColor ='black';
+    //Lock the drawing area so it doesn't respond to hit events. Also excluded from the intersection test in editor.js
+    drawingArea.locked=true;
+    drawingArea.name = "drawingArea";
 
 	undo.snapshot("Init");
 
