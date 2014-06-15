@@ -1,140 +1,319 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-	<meta charset="UTF-8">
-	<title>V.next 0.x</title>
-	<link rel="stylesheet" href="css/style.css">
+    <meta charset="UTF-8">
+    <title>V.next 0.x</title>
+    <link rel="stylesheet" href="css/style.css">
 
-  
-	<script type="text/javascript" src="js/jquery.js"></script>
-	<script type="text/javascript" src="js/paper.js"></script>
-	<script type="text/javascript" src="js/editor.js"></script>
-
-	<!--Start adding non-upstream files -->
-    <script src="v.next/assets/bootstrap/js/bootstrap.js"></script>
-    <script src="v.next/assets/slider/js/bootstrap-slider.js"></script>
-	<!--This file is used for the startup settings of the app plus some more.  -->
-	<script type="text/javascript" src="v.next/js/ext-globalVariables.js"></script>
-	<!--The non-upstream editor.js extension that adds the additional functionality.  -->
-	<script type="text/javascript" src="v.next/js/ext-editorNext.js"></script>
-	<!--The jQuery plugin ''Numeric'' that restricts certain values from being entered in input fields-->
-	<script type="text/javascript" src="v.next/js/numeric.js"></script>
-	<!--Modernizr with all tests included-->
-	<script type="text/javascript" src="v.next/js/modernizr.js"></script>
+    <!--The BootStrap File.  -->
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="assets/slider/css/slider.css">
 
 
+    <script type="text/javascript" src="js/jquery.js"></script>
+    <script type="text/javascript" src="js/paper.js"></script>
+    <script type="text/javascript" src="js/editor.js"></script>
 
-	<!--The non-upstream style.css extension that adds the additional functionality.  -->
-	<link rel="stylesheet" href="v.next/css/ext-styleNext.css">
-	<!--The BootStrap File.  -->
-	<link rel="stylesheet" href="v.next/assets/bootstrap/css/bootstrap.css">
-	<link rel="stylesheet" href="v.next/assets/slider/css/slider.css">
 
+    <!--Start adding non-upstream files -->
+    <script src="assets/bootstrap/js/bootstrap.js"></script>
+    <script src="assets/slider/js/bootstrap-slider.js"></script>
+    <script src="assets/bootstrap-touchspin/bootstrap.touchspin.js"></script>
+    <!--This file is used for the startup settings of the app plus some more.  -->
+    <script type="text/javascript" src="js/ext-globalVariables.js"></script>
+    <script type="text/javascript" src="js/skipper.js"></script>
+    <script type="text/javascript" src="js/zoom+grid.js"></script>
+    <script type="text/javascript" src="js/measurements.js"></script>
+    <script type="text/javascript" src="js/involuteGears.js"></script>
+    <!--The non-upstream editor.js extension that adds the additional functionality.  -->
+    <script type="text/javascript" src="js/ext-editorNext.js"></script>
+    <!--The jQuery plugin ''Numeric'' that restricts certain values from being entered in input fields-->
+    <script type="text/javascript" src="assets/numeric.js"></script>
+    <!--Modernizr with all tests included-->
+    <script type="text/javascript" src="assets/modernizr.js"></script>
+    <!--Filesaver that allows downloading of SVG's-->
+    <script type="text/javascript" src="assets/fileSaver.js"></script>
+    <!--Filesaver that allows downloading of SVG's-->
+    <script type="text/javascript" src="assets/bootbox.min.js"></script>
 
 </head>
+
+
 <body>
-	<!--Split undo toolbar from the rest of the buttons-->
-	<ul id="tools_undo">
-		<li id="undo" class="button"><img title="Undo" src="img/undo.png" /></li>
-		<li id="redo" class="button"><img title="Redo" src="img/redo.png" /></li>
-	</ul>
 
-	<!-- Split button -->
-    <div id="tools_fileMenu">
-     <div class="btn-group">
-      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myModal" >Trace Image</button>
-      <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-      <span class="caret"></span>
-      <span class="sr-only">Toggle Dropdown</span>
-      </button>
-      <ul class="dropdown-menu" role="menu">
-       <li><input type="file" id="tool-placeImageFileDropdown" name="tool-placeImageFileDropdown[]" multiple/></a></li>
-       <li><a href="#"  id="tool-placeImageUrlDropdown" >External URL</a></li>
-       <li class="divider"></li>
-       <li><a href="#">Help</a></li>
-      </ul>
-     </div>
-    </div>
-
-    <ul id="tools_top">
-		<li id="toolFullScreen" class="button"><img title="Full Screen" src="img/fullScreen.png" /></li>
-		<li id="tool-zoompan" class="button"><img title="Pan/Zoom" src="img/icon-hand.png" /></li>
-		<li id="toolExportSVG" class="button"><img title="Export SVG" src="img/exportSVG.png" /></li>
-	</ul>
-
-	<ul id="tools">
-		<li id="tool-select" class="button"><img title="Select/Move/Resize" src="img/icon-arrow-black.png" /></li>
-		<li id="tool-direct-select" class="button"><img title="Edit Points" src="img/icon-arrow-white.png" /></li>
-		<li id="tool-pen" class="button"><img title="Draw Shape" src="img/icon-pen.png" /></li>
-	</ul>
-
- 
-    <!--ElementType buttons that allow the user to draw and illuminate elements on the canvas as either ''Materials, Holes, Vector Engravings,Raster Engravings''-->
-    <ul id="tools_elementType">
-		<li id="tool-material" class="button"><img title="Add Material" src="img/elementMaterial.png" /></li>
-		<li id="tool-hole" class="button"><img title="Punch Hole" src="img/elementHole.png" /></li>
-		<li id="tool-rasterEngrave" class="button"><img title="Raster Engrave" src="img/elementRasterEngrave.png" /></li>
-		<li id="tool-vectorEngrave" class="button"><img title="Line Engrave" src="img/elementVectorEngrave.png" /></li>
-		<li id="tool-expertMode" class="button"><img title="Expert Mode(no fills)" src="img/expertMode.png" /></li>
-	</ul>
-
-
-    <!--Split a right toolbar that should contain tools, that appear only when elements are selected
-    -->
-	<ul id="tools_right">
-		<li id="cut" class="button"><img title="Cut" src="img/cut.png" /></li>
-		<li id="copy" class="button"><img title="Copy" src="img/copy.png" /></li>
-		<li id="paste" class="button"><img title="Paste" src="img/paste.png" /></li>
-		<li id="delete" class="button"><img title="Delete" src="img/delete.png" /></li>
-	    <li id="tool-sendBackOne" class="button"><img title="Back +1" src="img/bringBackOne.png" /></li>
-		<li id="tool-sendToBack" class="button"><img title="Send Back" src="img/bringBackMost.png" /></li>
-		<li id="tool-bringFrontOne" class="button"><img title="Front +1" src="img/bringFrontOne.png" /></li>
-		<li id="tool-bringFrontMost" class="button"><img title="Bring Front" src="img/bringFrontMost.png" /></li>
-		<li><input type="text" id="elementXPosition" class="form-control" placeholder="X position"></li>
-		<li><input type="text" id="elementYPosition" class="form-control" placeholder="Y position"></li>
-		<li><input type="text" id="elementWidth" class="form-control" placeholder="Width"></li>
-		<li><input type="text" id="elementHeight" class="form-control" placeholder="Height"></li>
-		<li id="toolRotateClockwise" class="button"><img title="Rotate clockwise 45" src="img/rotateClockwise.png" /></li>
-		<li id="toolRotateCounterClockwise" class="button"><img title="Rotate counter-clockwise 45 " src="img/rotateCounterClockwise.png" /></li>
-		<li id="toolFlipHorizontally" class="button"><img title="Flip Horizontally" src="img/FlipVertically.png" /></li>
-		<li id="toolFlipVertically" class="button"><img title="Flip Vertically" src="img/flipHorizontally.png" /></li>
-		<li id="tool-simplifyPath" class="button"><img title="Simplify Path/Reduce Nodes" src="img/simplifyPath.png" /></li>
-		<li id="tool-smoothPath" class="button"><img title="Smooth Path/Catmull Rom" src="img/smoothPath.png" /></li>
-	</ul>
-
-	<!--Place Image Modal window that allows to choose between uploading an image to the app or choosing an external image URL-->
-    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-    <div class="modal-content">
-    <div class="modal-header">
-    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-    <h4 class="modal-title" id="myModalLabel">Upload an Image</h4>
-    </div>
-    <div class="modal-body">
-    You can UPLOAD a file from your hard-drive OR you can paste in an image URL probably from Google. 
-    </div>
-    <div class="modal-footer">
-    <input type="file" id="tool-placeImageFileModal" name="filesModal[]" multiple />
-    <button id="tool-placeImageUrlModal" type="button" class="btn btn-primary">Paste URL</button>
-    </div>
-    </div>
-    </div>
-    </div>
-    
-    <div id="alertBox" class="alert alert-danger" >
-    <strong>Oh Snap!</strong> That was not an image file my man.
-    </div>
-
-    <div id="simplifySliderDiv">
-    <ul>
-    <li><input id="simplifySlider" data-slider-id='simplifySlider1' type="text" data-slider-min="0" data-slider-max="10" data-slider-step="1" data-slider-value="0"/></li>
-    <li style="list-style: none; padding: 0; margin:0;"> Tolerance </li>
+    <!--Undo buttons-->
+    <ul class="tools_undo">
+        <li id="undo" class="button">
+            <img title="Undo" src="img/undo.png" />
+        </li>
+        <li id="redo" class="button">
+            <img title="Redo" src="img/redo.png" />
+        </li>
     </ul>
+
+    <!-- Top file menu toolbar -->
+    <div class="tools_fileMenu">
+
+        <!-- File Dropdown -->
+        <div class="btn-group">
+            <button type="button" data-toggle="dropdown" class="btn btn-primary">File</button>
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                <span class="caret"></span>
+                <span class="sr-only">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+                <li><a href="#" id="tool-clearCanvas">Clear Canvas</a>
+                </li>
+                <li class="divider"></li>
+                <li>
+                    <span class="btn fileinput-button">
+            <i class="glyphicon glyphicon-plus">
+            </i>
+          <span style="color: black; z-index: 99;"> Import SVG </span>
+                    <input type="file" id="tool-importSVG" multiple="" />
+                    </span>
+                </li>
+                <li><a href="#" id="tool-exportSourceSVG">Save SVG</a>
+                </li>
+                <li class="divider"></li>
+                <li><a href="#" id="tool-placeImageUrlDropdown">Import Image from URL</a>
+                </li>
+                <li>
+                    <span class="btn fileinput-button">
+            <i class="glyphicon glyphicon-plus">
+            </i>
+          <span style="color: black; z-index: 99;"> Import Image</span>
+                    <input type="file" id="tool-placeImageFileDropdown" multiple="" />
+                    </span>
+                </li>
+                <li class="divider"></li>
+                <li><a href="#">Help</a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- ShapeScripts Dropdown -->
+        <div class="btn-group">
+            <button type="button" data-toggle="dropdown" class="btn btn-primary">Shape Makers</button>
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                <span class="caret"></span>
+                <span class="sr-only">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+                <li><a href="#" id="tool-involuteGearsModal" data-toggle="modal" data-target="#gearsModal">Involute Gears</a>
+                </li>
+                <li class="divider"></li>
+                <li><a href="#">Help</a>
+                </li>
+            </ul>
+        </div>
+
     </div>
 
-	<canvas id="canvas" resize></canvas>
+    <div class="gridSpinnerDiv">
+        <button id="snappingStepToggle" style=" margin-bottom:2%;" type="button" class="btn btn-default" data-toggle="button">Snap Grid On</button>
+        <button type="button" id="tool-drawGrid" style="margin-left:2%; margin-bottom:2%;" class="btn btn-primary">Draw Grid</button>
+        <input id="gridSpinner" type="text" value="50" name="gridSpinner" title="Grid Cell Size" readonly>
+        <script>
+            $("input[name='gridSpinner']").TouchSpin({
+                min: 5,
+                max: 100,
+                step: 5,
+                decimals: 0,
+                boostat: 5,
+                maxboostedstep: 10,
+                postfix: 'mm'
+            });
+        </script>
+    </div>
+    </div>
+
+    <!--Toolbox toolbar-->
+    <ul id="tools">
+        <li id="tool-select" class="button">
+            <img title="Select/Move/Resize" src="img/icon-arrow-black.png" />
+        </li>
+        <li id="tool-direct-select" class="button">
+            <img title="Edit Points" src="img/icon-arrow-white.png" />
+        </li>
+        <li id="tool-pen" class="button">
+            <img title="Draw Shape" src="img/icon-pen.png" />
+        </li>
+    </ul>
+
+    <!--Change element type toolbar-->
+    <ul class="tools_elementType">
+        <li id="tool-material" class="button">
+            <img title="Add Material" src="img/elementMaterial.png" />
+        </li>
+        <li id="tool-hole" class="button">
+            <img title="Punch Hole" src="img/elementHole.png" />
+        </li>
+        <li id="tool-rasterEngrave" class="button">
+            <img title="Raster Engrave" src="img/elementRasterEngrave.png" />
+        </li>
+        <li id="tool-vectorEngrave" class="button">
+            <img title="Line Engrave" src="img/elementVectorEngrave.png" />
+        </li>
+        <li id="tool-expertMode" class="button">
+            <img title="Expert Mode(no fills)" src="img/expertMode.png" />
+        </li>
+    </ul>
+
+    <!--Right toolbar-->
+    <ul class="tools_right">
+        <li id="cut" class="button">
+            <img title="Cut" src="img/cut.png" />
+        </li>
+        <li id="copy" class="button">
+            <img title="Copy" src="img/copy.png" />
+        </li>
+        <li id="paste" class="button">
+            <img title="Paste" src="img/paste.png" />
+        </li>
+        <li id="delete" class="button">
+            <img title="Delete" src="img/delete.png" />
+        </li>
+        <li id="tool-sendBackOne" class="button">
+            <img title="Back +1" src="img/bringBackOne.png" />
+        </li>
+        <li id="tool-sendToBack" class="button">
+            <img title="Send Back" src="img/bringBackMost.png" />
+        </li>
+        <li id="tool-bringFrontOne" class="button">
+            <img title="Front +1" src="img/bringFrontOne.png" />
+        </li>
+        <li id="tool-bringFrontMost" class="button">
+            <img title="Bring Front" src="img/bringFrontMost.png" />
+        </li>
+        <li>
+            <input type="text" id="elementXPosition" class="form-control-dark" placeholder="X position">
+        </li>
+        <li>
+            <input type="text" id="elementYPosition" class="form-control-dark" placeholder="Y position">
+        </li>
+        <li>
+            <input type="text" id="elementWidth" class="form-control-dark" placeholder="Width">
+        </li>
+        <li>
+            <input type="text" id="elementHeight" class="form-control-dark" placeholder="Height">
+        </li>
+        <li id="toolRotateClockwise" class="button">
+            <img title="Rotate clockwise 45" src="img/rotateClockwise.png" />
+        </li>
+        <li id="toolRotateCounterClockwise" class="button">
+            <img title="Rotate counter-clockwise 45 " src="img/rotateCounterClockwise.png" />
+        </li>
+        <li id="toolFlipHorizontally" class="button">
+            <img title="Flip Horizontally" src="img/FlipVertically.png" />
+        </li>
+        <li id="toolFlipVertically" class="button">
+            <img title="Flip Vertically" src="img/flipHorizontally.png" />
+        </li>
+        <li id="tool-simplifyPath" class="button">
+            <img title="Simplify Path/Reduce Nodes" src="img/simplifyPath.png" />
+        </li>
+        <li id="tool-smoothPath" class="button">
+            <img title="Smooth Path/Catmull Rom" src="img/smoothPath.png" />
+        </li>
+
+    </ul>
+
+    <ul class="tools_right_alignment">
+
+        <li id="tool-alignRight" class="button">
+            <img title="Align elements to the right" src="img/alignRight.png" />
+        </li>
+        <li id="tool-alignLeft" class="button">
+            <img title="Align elements to the left" src="img/alignLeft.png" />
+        </li>
+        <li id="tool-alignTop" class="button">
+            <img title="Align elements to the top" src="img/alignTop.png" />
+        </li>
+
+        <li id="tool-alignBottom" class="button">
+            <img title="Align elements to the bottom" src="img/alignBottom.png" />
+        </li>
+
+        <li id="tool-alignCenter" class="button">
+            <img title="Align elements to the center" src="img/alignCenter.png" />
+        </li>
+
+    </ul>
+
+
+    <!--Involute Gears Modal-->
+    <div class="modal fade" id="gearsModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="gearsModalLabel">Create Involute Gears</h4>
+                </div>
+                <div class="modal-body">
+                    <div id="gearsSVGcontainer" class="modal-body">
+                        <div class="gearSpinnerDiv">
+                            <span> Number of teeth </span>
+                            <input id="gearSpinnerTeeth" type="text" value="14" name="gearSpinnerTeeth" readonly>
+                            <script>
+                                $("input[name='gearSpinnerTeeth']").TouchSpin({
+                                    min: 5,
+                                    max: 33,
+                                    step: 1,
+                                    decimals: 0,
+                                    boostat: 5,
+                                    maxboostedstep: 10,
+                                    postfix: 'teeth'
+                                });
+                            </script>
+                        </div>
+                        <div class="gearSpinnerDiv">
+                            <span> Axle Diameter </span>
+                            <input id="gearSpinnerAxleRadius" type="text" value="20" name="gearSpinnerAxleRadius">
+                            <script>
+                                $("input[name='gearSpinnerAxleRadius']").TouchSpin({
+                                    min: 5,
+                                    max: 50,
+                                    step: 0.2,
+                                    decimals: 2,
+                                    boostat: 5,
+                                    maxboostedstep: 10,
+                                    postfix: 'mm'
+                                });
+                            </script>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <span> <button id="tool-placeGear" type="button" class="btn btn-primary">Place</button> </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--Alert Box-->
+    <div id="alertBox" class="alert alert-danger">
+        <strong>Oh Snap!</strong> That was not an image file.
+    </div>
+
+    <!--Slider for path simplification-->
+    <div id="simplifySliderDiv">
+        <ul>
+            <li>
+                <input id="simplifySlider" data-slider-id='simplifySlider1' type="text" data-slider-min="0" data-slider-max="10" data-slider-step="1" data-slider-value="0" />
+            </li>
+            <li style="list-style: none; padding: 0; margin:0;">Tolerance</li>
+        </ul>
+    </div>
+
+    <!--The allmighty canvas!-->
+    <canvas id="canvas" hidpi="on" resize></canvas>
 </body>
+
 <!--The following image is used as a container for placing a Raster on the canvas since paper.Raster requires that we use the id of an image tag to load an image. The source is empty because
-the user defines the source of the image when we trigger the placeImage function -->	
-<img src="" id ="mona" style="display:none" alt="Smiley face" height="42" width="42">
+the user defines the source of the image when we trigger the placeImage function -->
+<img src="" id="mona" style="display:none" alt="Smiley face" height="42" width="42">
+
 </html>

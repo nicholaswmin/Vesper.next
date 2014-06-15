@@ -7,6 +7,24 @@
 //UPSTREAM MODIFICATIONS by ''nicholaswmin''.I put use strict here for no reason, just for testing.
 "use strict";
 
+//UPSTREAM MODIFICATION 
+//Polyfill for IE, does not support event-dispatching which is needed at least for skipper.js
+(function () {
+  function CustomEvent ( event, params ) {
+    params = params || { bubbles: false, cancelable: false, detail: undefined };
+    var evt = document.createEvent( 'CustomEvent' );
+    evt.initCustomEvent( event, params.bubbles, params.cancelable, params.detail );
+    return evt;
+   };
+
+  CustomEvent.prototype = window.Event.prototype;
+
+  window.CustomEvent = CustomEvent;
+})();
+
+//UPSTREAM MODIFICATION 
+//The function below allows the pen tool to snap-to-grid when a grid is present on the canvas.
+function snap(x, div) { return Math.round(x/div)*div; };
 
 
 function Undo(maxUndos) {
@@ -99,8 +117,22 @@ Undo.prototype.captureIDs = function() {
 }
 
 Undo.prototype.snapshotProject = function() {
+
+//UPSTREAM MODIFICATION BY nicholaswmin. I declare event dispatches just before taking an UNDO snapshot in order to ommit non-exportable
+//items(such as grid) from the Undo snapshots. Another event dispatcher immediately after the snapshot is finished, reinstates the removed items.
+
+//Dispatch an event to ommit the lockable items, see skipper.js
+
+	var snapshotFired = new CustomEvent("ommitSnapshot", { "detail": "A snapshot is about to take place" });
+    document.dispatchEvent(snapshotFired);
+
 	var json = paper.project.exportJSON({ asString: false });
-	// TODO: Remove objects marked as guides.
+
+//Dispatch an event to redraw the removed lockable items, see skipper.js
+    var snapshotEnded = new CustomEvent("snapshotEnded", { "detail": "A snapshot has ended" });
+    document.dispatchEvent(snapshotEnded);	
+
+// TODO: Remove objects marked as guides.
 	return json;
 }
 
@@ -149,9 +181,19 @@ Undo.prototype.restoreSelection = function(sel) {
 }
 
 Undo.prototype.restore = function(state) {
+//UPSTREAM MODIFICATION by nicholaswmin - The Undo snapshot does not contain the items that are non-undoable. Therefore we need to redraw them
+//see skipper.js.
+//Also the project is clear via paper.project.clear(). I change that to  paper.project.activeLayer.removeChildren(); because its safer to use?
+
 	// Empty the project and deserialize the project from JSON.
-	paper.project.clear();
+	paper.project.activeLayer.removeChildren();
 	paper.project.importJSON(state.json);
+
+//Event dispatch to skipper.js to redraw the missing non-undoable items.
+    var undoFired = new CustomEvent("snapshotRestored", { "detail": "A snapshot has ended" });
+    document.dispatchEvent(undoFired);
+
+
 	// HACK: paper does not retain IDs, we capture them on snapshot,
 	// restore them here.
 	this.restoreIDs();
@@ -546,10 +588,9 @@ function getPathsIntersectingRect(rect) {
 
 //UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
 //therefore we halt it's selection by returning. We check for the item's className and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
+//There are checks for lockable items too that must be ommited by intersection selection such as drawingArea and the grid.
 
-//There is also a check whether the item name is drawing area which is the rectangle in which the user must concetrate his drawings in. Drawing area cannot be selected in any way.
-
-		if (item.className === "Raster" ||	item.name === "drawingArea") {
+		if (item.className === "Raster" ||	item.name === "drawingArea" ||	item.name === "gridLine") {
 			return;
 		}
 
@@ -591,25 +632,13 @@ function getSelectionBounds() {
 		else
 			bounds = bounds.unite(selected[i].bounds);
 
-		//UPSTREAM Modification by ''nicholaswmin''. 'Transmit' width/height/x/y position values to input boxes in html page
-		//Also a jquery function that SHOWS RIGHT TOOLS when at least 1 item is in the ''selected'' array.
-		    $('#tools_right').show();
-		    document.getElementById('elementXPosition').value =(bounds["x"].toFixed(2));
-		    document.getElementById('elementYPosition').value =(bounds["y"].toFixed(2));
-		    document.getElementById('elementWidth').value =(bounds["width"].toFixed(2));
-		    document.getElementById('elementHeight').value =(bounds["height"].toFixed(2));
+		//UPSTREAM Modification by ''nicholaswmin''. Dispatch event to editorNext.js to show right tools on selection and set dimensions/x,y positions in input boxes. 
+		//Also dispatches selected in order to find out if more than 1 item is selected in which case it disables tools(e.g path simplifier) that only allow 1 item to be selected.
 
-		//UPSTREAM Modification by ''nicholaswmin''. The following conditional checks whether more than one item is selected OR if the selection is a Raster
-		//E.g the path simplifier should only work on single selections that are NOT rasters.
+		     var selectionFired = new CustomEvent("selectionFired",{ "detail": {"bounds":bounds}});
+             document.dispatchEvent(selectionFired);
 
-		    if (selected.length > 1 || selected[0].className === "Raster") 
-		     {
-		     	$( "#tool-simplifyPath" ).last().addClass( "disable" );
-		     }
-		     else
-		     {
-		     	$( "#tool-simplifyPath" ).last().removeClass( "disable" );
-		     }
+		 
 	}
 	return bounds;
 }
@@ -1321,13 +1350,7 @@ toolZoomPan.on({
 			var dx = paper.view.bounds.width / Math.abs(end.x - start.x);
 			var dy = paper.view.bounds.height / Math.abs(end.y - start.y);
 			paper.view.zoom = Math.min(dx, dy) * paper.view.zoom;
-//UPSTREAM MODIFICATION BY nicholaswmin -- the following 4-5 lines are triggered upon completion of the zoom rect and they are meant to scale the stroke/divide by zoom level.
-//This implements the non-scaling stroke
-			var children = project.activeLayer.children;
-		    for (var i = 0; i < children.length; i++) {
-	        var child = children[i];
-	        child.strokeWidth = 1 / paper.view.zoom;
-	        }
+
 		}
 		this.hitTest(event);
 		this.mode = '';
@@ -1345,6 +1368,10 @@ toolZoomPan.on({
 			var delta = this.mouseStartPos.subtract(pt);
 			paper.view.scrollBy(delta);
 			this.mouseStartPos = pt;
+//UPSTREAM MODIFICATION by nicholaswmin
+//Dispatch an event to editorNext.js that the pan was fired to redraw the grid if one exists
+			var panFired = new CustomEvent("panFired", { "detail": "The pan tool was fired" });
+            document.dispatchEvent(panFired);
 		}
 	},
 
@@ -1403,6 +1430,10 @@ toolPen.updateTail = function(point) {
 		down: true,
 		move: true
 	});
+    var tailLength = tail.length;
+	var selectionFired = new CustomEvent("tailFired",{ "detail": {"tailLength":tailLength}});
+    document.dispatchEvent(selectionFired);
+
 }
 toolPen.resetHot = function(type, event, mode) {
 };
@@ -1489,11 +1520,18 @@ toolPen.hitTest = function(event, type) {
 		}
 	}
 
+
 	if (!result) {
 		this.mode = 'create';
 		setCanvasCursor('cursor-pen-create');
 		if (event.point)
-			this.updateTail(event.point);
+			var snapped = new paper.Point();
+//UPSTREAM MODIFICATION by nicholaswmin - snappingStep is declared in globalVariables.js - when grid is on it corresponds to the grid size - when off it reverts
+//to the default value of 1 again. It allows the pen tool to snap to the grid - also declared on node placement in the pen tool.
+snapped.x = snap(event.point.x,snappingStep);
+snapped.y = snap(event.point.y,snappingStep);
+this.updateTail(snapped);
+	
 	}
 
 	this.hitResult = result;
@@ -1528,12 +1566,18 @@ toolPen.on({
 				path.fillColor = currentToolColor;
 				path.opacity = defaultToolOpacity;
 // Division of the strokeWidth by the zoom level ensures a hairline stroke irregardless of zoom level
-				path.strokeWidth = 1 / paper.view.zoom;
+				path.strokeWidth = 1;
 				path.strokeColor = 'red';
 				path.name = currentToolName;
 				this.pathId = path.id;
 			}
-			this.currentSegment = path.add(event.point);
+//UPSTREAM MODIFICATION by nicholaswmin - snappingStep is declared in globalVariables.js - when grid is on it corresponds to the grid size - when off it reverts
+//to the default value of 1 again. It allows the pen tool to snap to the grid - also declared on tail update of pen tool.
+			var snapped = new paper.Point();
+            snapped.x = snap(event.point.x,snappingStep);
+            snapped.y = snap(event.point.y,snappingStep);
+			this.currentSegment = path.add(snapped);
+
 
 			this.mouseStartPos = event.point.clone();
 			this.originalHandleIn = this.currentSegment.handleIn.clone();
@@ -1854,15 +1898,7 @@ $(document).ready(function() {
     //var path2 = new paper.Path.Circle(new paper.Point(180, 150), 20);
     //path2.fillColor = 'grey';
 
-    //Adding a new pre-defined shape which I will call the drawingArea. Cannot add this to editorNext.js since the undo.snapshot(init) does not work there.
 
-    var drawingArea = new paper.Path.Rectangle(new paper.Point(100, 100), materialWidth,materialHeight);
-	drawingArea.strokeColor ='black';
-    //Lock the drawing area so it doesn't respond to hit events. Also excluded from the intersection test in editor.js
-    drawingArea.locked=true;
-    drawingArea.name = "drawingArea";
-
-	undo.snapshot("Init");
 
 	$("#tool-select").click(function() {
 		toolStack.setToolMode('tool-select');
