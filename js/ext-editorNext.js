@@ -22,7 +22,8 @@ $(document).ready(function () {
     drawingArea.strokeWidth = 5;
     //Lock the drawing area so it doesn't respond to hit events. Also excluded from the intersection test in editor.js
     drawingArea.locked = true;
-    bucket.addItem(drawingArea, true, true, true, true);
+    drawingArea.data.nonUndoable = true;
+    drawingArea.data.nonMovable = true;
 
     paper.view.update();
 
@@ -344,11 +345,6 @@ break;
         bootbox.confirm("Clearing the canvas will remove everything that you drawed so far. Are you absolutely, positively certain that you want that?", function (result) {
             if (result) {
                 paper.project.activeLayer.removeChildren();
-
-                var snapshotEnded = new CustomEvent("clearEnded", {
-                    "detail": "A canvas clear has ended"
-                });
-                document.dispatchEvent(snapshotEnded);
             }
         });
     }
@@ -361,7 +357,6 @@ break;
         for (var i = 0; i < files.length; i++) {
             var file = files[i];
             if (file.type.match('svg')) {
-                console.log(file);
                 project.importSVG(file, {
                     expandShapes: true
                 });
@@ -449,10 +444,6 @@ break;
     function exportSourceSVG() {
 
         clearSelectionBounds();
-        var snapshotFired = new CustomEvent("ommitSaveSource", {
-            "detail": "A save source is about to take place"
-        });
-        document.dispatchEvent(snapshotFired);
 
         var svg = paper.project.exportSVG({
             asString: true
@@ -462,10 +453,6 @@ break;
         });
         saveAs(blob, 'image.svg');
 
-        var snapshotEnded = new CustomEvent("saveSourceEnded", {
-            "detail": "Export has ended"
-        });
-        document.dispatchEvent(snapshotEnded);
     }
 
     //Functions for settings type of element
@@ -548,7 +535,6 @@ break;
         var children = project.activeLayer.children;
         for (var i = 0; i < children.length; i++) {
             var child = children[i];
-            console.log(child.fillColor);
 
             if (child.fillColor === null) {
                 currentToolColor = cutColor;
@@ -625,7 +611,6 @@ break;
             if (selected[i].name === "boundingBoxRect") continue;
             var finalPosition = selected[i].index + 1;
             project.activeLayer.insertChild(finalPosition, selected[i]);
-            console.log(selected[i].index);
         }
         undo.snapshot("Cut");
         //IE AND FF fail to automatically update the view after every change so we need to call it manually, otherwise the effects of a function don't take place until after we move the mouse after
@@ -641,7 +626,6 @@ break;
             if (selected[i].index > 0) {
                 var finalPosition = selected[i].index - 1;
                 project.activeLayer.insertChild(finalPosition, selected[i]);
-                console.log(selected[i].index);
             } else {
                 console.log("Reached the bottom of the selected index stack");
             }
@@ -700,7 +684,6 @@ break;
 
                 var currentHeight = selected[i].bounds["height"];
                 var newHeight = document.getElementById('elementHeight').value;
-                console.log(currentHeight);
                 var scaleCoefficient = newHeight / currentHeight;
                 selected[i].scale(1, scaleCoefficient);
             }

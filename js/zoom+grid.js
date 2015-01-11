@@ -71,7 +71,8 @@ $(document).ready(function () {
     grid.gridGroup = new paper.Group;
     grid.gridGroup.locked = true;
     grid.gridGroup.name = "gridGroup";
-    bucket.addItem(grid.gridGroup,true,true,true,true);
+    grid.gridGroup.data.nonUndoable = true;
+    grid.gridGroup.data.nonMovable = true;
 
 
     grid.drawGridLines = function () {
@@ -154,6 +155,7 @@ $(document).ready(function () {
             }
             break;
         }
+        grid.gridGroup.sendToBack();
     }
 
 

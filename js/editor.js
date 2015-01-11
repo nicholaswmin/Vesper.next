@@ -116,21 +116,35 @@ Undo.prototype.captureIDs = function() {
 	}
 }
 
+//clears a JSON from non-undoable elements
+Undo.prototype.sanitizeUndoJSON = function(json) {
+	var innerChildren;
+	for (var i = 0; i < json[0].length; i++) {
+		if(json[0][i] instanceof Object){
+			var innerChildren = json[0][i].children;
+			sanitize(innerChildren); 
+		}
+	};
+
+	function sanitize(innerChildren){
+
+		for (var i = innerChildren.length - 1; i >= 0; i--) {
+								
+			if(typeof innerChildren[i][1].data.nonUndoable !== "undefined"){
+				if(innerChildren[i][1].data.nonUndoable){
+					innerChildren.splice(i,1);
+				}
+			}
+		};
+	}
+	return json;
+}
+
 Undo.prototype.snapshotProject = function() {
 
-//UPSTREAM MODIFICATION BY nicholaswmin. I declare event dispatches just before taking an UNDO snapshot in order to ommit non-exportable
-//items(such as grid) from the Undo snapshots. Another event dispatcher immediately after the snapshot is finished, reinstates the removed items.
-
-//Dispatch an event to ommit the lockable items, see skipper.js
-
-	var snapshotFired = new CustomEvent("ommitSnapshot", { "detail": "A snapshot is about to take place" });
-    document.dispatchEvent(snapshotFired);
-
 	var json = paper.project.exportJSON({ asString: false });
+	json = this.sanitizeUndoJSON(json);
 
-//Dispatch an event to redraw the removed lockable items, see skipper.js
-    var snapshotEnded = new CustomEvent("snapshotEnded", { "detail": "A snapshot has ended" });
-    document.dispatchEvent(snapshotEnded);	
 
 // TODO: Remove objects marked as guides.
 	return json;
@@ -181,17 +195,24 @@ Undo.prototype.restoreSelection = function(sel) {
 }
 
 Undo.prototype.restore = function(state) {
-//UPSTREAM MODIFICATION by nicholaswmin - The Undo snapshot does not contain the items that are non-undoable. Therefore we need to redraw them
-//see skipper.js.
-//Also the project is clear via paper.project.clear(). I change that to  paper.project.activeLayer.removeChildren(); because its safer to use?
+
 
 	// Empty the project and deserialize the project from JSON.
+	//paper.project.activeLayer.removeChildren();
+	var children = paper.project.activeLayer.children;
+	var skippedItems = [];
+	for (var i = children.length - 1; i >= 0; i--) { //redraw items that were sniffed out of the undo JSON
+		if(typeof children[i].data.nonUndoable !== "undefined"){
+			if(children[i].data.nonUndoable)
+				skippedItems.push(children[i])
+		}
+	};
 	paper.project.activeLayer.removeChildren();
 	paper.project.importJSON(state.json);
+	for (var i = 0; i < skippedItems.length; i++) {
+		paper.project.activeLayer.addChild(skippedItems[i]);
+	};
 
-//Event dispatch to skipper.js to redraw the missing non-undoable items.
-    var undoFired = new CustomEvent("snapshotRestored", { "detail": "A snapshot has ended" });
-    document.dispatchEvent(undoFired);
 
 
 	// HACK: paper does not retain IDs, we capture them on snapshot,
@@ -551,8 +572,7 @@ function getSegmentsInRect(rect) {
 
 //UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
 //therefore we halt it's selection by returning. We check for the item's className and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
-
-		if (item.className === "Raster") {
+		if (item.className === "Raster" || item.data.nonMovable) {
 			return;
 		}
 
@@ -589,8 +609,7 @@ function getPathsIntersectingRect(rect) {
 //UPSTREAM MODIFICATION BY nicholaswmin. The following if checks whether the intersected/contained item is a raster. A raster is not possible to get selected by a selection rectangle
 //therefore we halt it's selection by returning. We check for the item's className and if it equals to "Raster" then we need to ignore it. There is also another check on the Select Tool.
 //There are checks for lockable items too that must be ommited by intersection selection such as drawingArea and the grid.
-
-		if (item.className === "Raster" ||	item.name === "drawingArea" ||	item.name === "gridLine") {
+		if (item.className === "Raster" ||	item.data.nonMovable===true) {
 			return;
 		}
 
@@ -718,6 +737,8 @@ toolSelect.on({
 		if (this.hitItem) {
 //UPSTREAD MODIFICATION BY nicholaswmin. Here we need to add this.hitItem.type == 'pixel' in order to pickup pixels as well, not only strokes and fills as the default Stylii has it.
 			if (this.hitItem.type == 'fill' || this.hitItem.type == 'stroke' || this.hitItem.type == 'pixel') {
+				if(this.hitItem.item.data.nonMovable)
+					return false;
 				if (event.modifiers.shift) {
 					this.hitItem.item.selected = !this.hitItem.item.selected;
 				} else {
